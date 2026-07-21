@@ -40,7 +40,7 @@ STATELESS DEV BRANCH (2025):
 1.3H - Comprehensive bugfixes, hardening and improved DoS defense applied to 1.2.3 - SUCCESS - deployed to prod   
 1.4H - 1.3H adding improved IPV6 handling, client browser UX, internal fallback rate limiter, token self-destruct and pollable stats - SUCCESS  
 1.5E - 1.4H core adding remote server auth keys and arg-adjustible challenge lifetimes - SUCCESS - First Enterprise candidate  
-1.6E - 1.5E with significant refactoring of CPU and memory-expensive functions to further reduce resource - Partial Success  
+1.6E - 1.5E with significant refactoring of CPU and memory-expensive functions to further reduce resource use - Partial Success  
 1.6.1E - Bugfixes applied to 1.6E, added challenge page HTML as separate file for easy editing/customization - SUCCESS  
 1.6.2E - 1.6.1E with added proxy-variable challenge expiry times and client connection lifetimes - SUCCESS - deployed to prod  
 1.6.3E - 1.6.2E with added per-client connection limit and expanded stats polling - SUCCESS - deployed to prod  
