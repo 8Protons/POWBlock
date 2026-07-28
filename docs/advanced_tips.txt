@@ -1,0 +1,138 @@
+Advanced POWBlock:  Banning
+
+It can be very advantageous to incorporate Fail2ban in your POWBlock stack to place timed bans on hostile IPs that repeatedly fail challenges.  
+This is done by using Fail2ban's own system log parser and by configuring a custom filter + jail for POWBlock clients.  Basic examples follow:
+
+Example Filter (/etc/fail2ban/filter.d/powblock.conf):
+[Definition]
+#failregex = \[POWBLOCK\] DROP .* from <HOST>
+failregex = ^.*?\[POWBLOCK\] DROP .*? from <HOST>$
+
+ignoreregex =
+
+# Explanation:
+# <ADDR> is Fail2ban's built-in pattern for IPv4/IPv6 addresses
+# This one regex catches ALL drop types (rate-limit, per-ip-conns, trickle, slowloris, etc.)
+
+
+Example Jail (/etc/fail2ban/jail.d/powblock.local):
+[powblock]
+enabled   = true
+port      = http,https
+filter    = powblock
+backend   = systemd
+
+# This matches ANY instance (powblock@1, powblock@2, etc.)
+journalmatch = _SYSTEMD_UNIT=powblock@*.service
+
+# If using POWBlock inside a systemd nspawn container run fail2ban on the host server and do
+# sudo journalctl -M CONTAINERNAME -u 'powblock@*.service' -n 5 -o json-pretty
+# to get the MACHINE ID and then use your MACHINE ID like this:
+# journalmatch = _MACHINE_ID=016c82e2120b4c0dd813b39c83985654 + _SYSTEMD_UNIT=powblock@*.service
+
+# Ban criteria:  DROPs in WINDOW triggers ban for TIME ignoring SELF and bans perform DEFAULT ACTION (usually IPtables ban)
+maxretry  = 8
+findtime  = 3600
+bantime   = 7200
+ignoreip  = 127.0.0.1/8 ::1
+action = %(action_)s
+
+# Check active bans from the host server with:
+# sudo fail2ban-client status powblock
+
+-----------------------------
+Advanced POWBlock:  Distributed Networks
+
+If your website uses a number of frontends (for example, multiple reverse proxies on round-robin DNS all serving a single origin) POWBlock can accommodate this easily.  Since POWBlock is completely stateless there is no concern with shared state across multiple frontend servers.  The only thing required is that each server uses an identical configuration for the POW issuance/validation logic and an identical X-PoW-Secret key.  Then it doesn't matter which server a client accesses - the tokens and validation will always be the same, and a client passing POWBlock on any connection is instantly recognized by all the other frontends.
+
+-----------------------------
+Advanced POWBlock:  Scaling
+
+POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can
+then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.
+The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.
+A 16 core, 128GB Enterprise server with 15 POWBlocks should comfortably handle 100,000+ requests per second from tens of thousands of IPs, and clustering such servers via round-robin is also fully supported.  
+
+Example systemd template name:  powblock@.service
+
+[Unit]
+Description=POWBlock (instance %i)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/powblock186J-static -port 9001 -diff 17 -ctime 80 -loose
+WorkingDirectory=/usr/local/sbin/
+Restart=always
+RestartSec=5
+User=powblock
+KillMode=process
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+
+-----------------------------
+Advanced POWBlock:  Remote POW
+
+POWBlock binds on all interfaces (0.0.0.0) and supports networking by default, making it accessible both internally to a local reverse proxy and also to remote proxies.
+An advanced user may wish to run POWBlock on its own server, or to stack up instances on a single dedicated machine (a "powbox") to serve as a powerful network gate that 
+all of their reverse proxies can dial into remotely.  POWBlock does not require any configuration to do this - it is enabled by default, though it is critical that such 
+users secure the POWBlock machine with a firewall that only accepts connections from the trusted reverse proxies.  In such cases the remote proxy auth key should be 
+enabled and authorized proxies should be configured to submit the X-PoW-ClientAuth header containing the key with every request.  POWBlock supports being ran behind a 
+simple TLS proxy like Hitch or Haproxy, and when configured with certs this can secure traffic between the remote proxy and the powbox server via ordinary 
+HTTPS (just set the HTTPS domain, instead of the IP address of the powbox, as your proxy backend and configure your proxy for TLS when using it, or use Stunnel if 
+your proxy doesn't support backend TLS).  Remember that POWBlock *is a backend* and must be treated as such, with traffic being passed to it transparently.
+
+Example minimalist Stunnel config:
+
+[goingtopowblock]
+client = yes
+accept = 127.0.0.1:9002  ; local port your proxy connects to (plain HTTP)
+connect = powblock.com:443    ; remote HTTPS endpoint
+verify = 2               ; validate cert chain (2 = verify with CA)
+CAfile = /etc/ssl/certs/ca-certificates.crt  ; system CA bundle (includes Let's Encrypt)
+checkHost = powblock.com      ; verify hostname matches cert
+
+-----------------------------
+Advanced POWBlock:  TOR Onion POW
+
+POWBlock is fully compatible with Tor traffic provided your hidden service and proxy are configured properly.  By adding the setting:
+
+HiddenServiceExportCircuitID haproxy
+
+to your torrc file, the Tor service will automatically generate a pseudo-IPV6 (dead:beef) containing an encoded string that uniquely identifies the specific Tor circuit of a connecting client, and transmits it to your onion via the haproxy-type PROXY V1 data.  The last 2 octets of this IP represent the specific Tor relays that the user is connecting through, and serves as a "pretty unique" identifier.  Its not perfect, but collisions where users are coming in on the exact same circuit are rare enough for this pseudo-IP to tell them apart in most cases.  Once Tor is configured, your proxy needs to sit between the TOR service and your hidden service webserver and must also be able to parse PROXY V1 data.  Varnish can do this by running it with the PROXY arg, and doing so will automatically have it populate its client.ip data with the pseudo IP.  From there you can copy it into X-Client-IP and send it along to POWBlock just like an ordinary IPV6 address and it will serve the same purpose.  For other proxies please see their documentation but the logic remains the same.
+
+Alternatively you can use your proxy to give a signed, unique session cookie to clients who connect, and then validate that cookie value and use it as your client data.
+
+-----------------------------
+Tips, Tricks, Quirks, and Notes:
+
+- You can make your POW cookies "self destruct" after a time by having your proxy compute a Unix Epoch and add it's window to the expected hash.
+- You can instantly invalidate all existing POW TOKENs and force mass re-challenge by changing your X-PoW-Secret key.
+- You can use the POW_ID cookie to hold and validate a TLS or device fingerprint to make replay attacks even harder.
+- You can also use POW_ID to hold an API or bypass key for certain clients that need to skip POWBlock.
+- The active_conns, rate_limit_hits, slowloris drops, and max_concurrent drops are the main stats to watch to detect probing and attacks.
+- You can pick up the X-PoWBlock-Status response headers with your own server or proxy and use them to trigger things.
+- You can set up Javascript on your own site to run POWBlock in a background iframe so it doesn't interrupt users mid-browse if their token expires.
+- If running on TOR, have your clients set MaxCircuitDirtiness 3600 in their torrc file so they only get POW'd once per hour (TOR default = 10 mins).
+- Use your proxy to normalize incoming IP addresses before setting X-Client-IP. This can prevent a lot of IPV4/+IPV6 weirdness.
+- Use your proxy to require a valid POW-TOKEN on POST requests and watch all that automated forum/login spam stop.
+- Rotate your secret key monthly or so to prevent it from being sussed out by crackers.
+- If your site is media heavy, a user browsing when their token expires will see all the content break. Its good UX to have broken media redirect to a tiny, rate-limited placeholder image so users know to refresh for POW.
+- Set up an abuse throttle in your proxy that overwrites a client's POW_TOKEN value to garbage via a set-cookie response if they exceed your limits once inside - this will block their abuse and kick them out on their next navigation.
+- If your site has very odd URL structures that mangle redirects from POWBlock, you can intercept the 302 and rewrite it with your proxy.
+- If you'd like a dedicated POWBlock logfile instead of logging to the system journal, you can add:
+StandardError=append:/path/to/log/dir/powblock.log
+to the systemd template right below EXECSTART.
+
+-POWBlock intentionally separates the client's cookie values from anything going on inside its own process, and leaves them up to the proxy. 
+This gives the admin the freedom to use *anything* as the token value, while leaving POWBlock free to cleanly IP bind and time limit challenges and submissions. 
+Hash(clientIP+Secret) is just our recommended practice for the POW_TOKEN. You can use any kind of deterministic client value or hash you want as long as you 
+keep X-PoW-Expected to <64 printable bytes. Hack away.
+
+-POWBlock doesn't have or need a configuration file like most programs do, because with a paid license the proxy can configure it on the fly.  
+Your proxy configuration becomes POWBlock's config file, and all the basic configs are handled via startup args in the free version.
+
+-The proxy logic can be as simple as the example in this document, or as atrociously complicated as the 500+ line VCL controller that the authors use on our 
+production servers. A really good controller is just as much of a technical marvel as POWBlock itself, especially with a license that unlocks all of the granular control headers.
