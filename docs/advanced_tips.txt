@@ -4,6 +4,7 @@ It can be very advantageous to incorporate Fail2ban in your POWBlock stack to pl
 This is done by using Fail2ban's own system log parser and by configuring a custom filter + jail for POWBlock clients.  Basic examples follow:
 
 Example Filter (/etc/fail2ban/filter.d/powblock.conf):
+
 [Definition]
 #failregex = \[POWBLOCK\] DROP .* from <HOST>
 failregex = ^.*?\[POWBLOCK\] DROP .*? from <HOST>$
@@ -16,6 +17,7 @@ ignoreregex =
 
 
 Example Jail (/etc/fail2ban/jail.d/powblock.local):
+
 [powblock]
 enabled   = true
 port      = http,https
