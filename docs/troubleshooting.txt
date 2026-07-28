@@ -1,0 +1,56 @@
+Troubleshooting:
+
+POWBlock doesn't appear at all - check your firewall and auth keys and make sure it can still be accessed by the reverse proxy, 
+make sure POWBlock itself is running and doublecheck your port. If it failed to bind you're likely using a restricted port, 
+so switch to a higher port or run as root (not suggested). If you're sure the port and firewall are correct, double check 
+your proxy config and make sure its actually sending traffic there.
+
+POWBlock appears but spins forever and never completes - A few things can cause this.  
+
+1:  You look like a bot.  Some browser plugins can guard your privacy so strictly they fool the JS detector code in the default
+powchallenge.html page into thinking you're a bot, and so it passes you the challenge and then silently hangs up on you.  Disable
+your plugins / Brave shields etcand try again.  
+
+2:  The X-Original-URL header is not being passed by your proxy.  POWBlock requires its value to complete the
+302+set-cookie cycle, and if its missing or malformed then the challenge page may keep reloading back to itself, leaving you stuck.
+If none of these apply, consider that the difficulty might be set too high or else the device is very slow at crunching proof-of-work, 
+like an older phone.  Consider lowering the difficulty and/or increasing the CTime and testing again.  There is a hard cap (CTime)
+on how long a user can attempt to solve a challenge, and if they're taking longer than that it will never complete.  
+
+3:  Your browser is mangling the POW submission, such as by %encoding characters in the pbchal string, or padding the request 
+with extra bytes that are being injected into the parser.  Try a different browser or try running POWBlock in -loose mode to test.  
+
+4:  Some factor is causing your IP address to change between requesting the challenge and submitting the POW answer.  
+Try a different browser or try running POWBlock in -loose mode to test, or consult your network administrator.  
+
+5:  The client isn't connecting over HTTPS.  The default powchallenge.html page relies on subtle.digest crypto, which browsers \
+cannot run over plain HTTP.
+
+POWBlock seems to work fine but users get too many challenges - This is caused by whatever logic you implemented in your proxy to
+determine token validity.  POWBlock itself doesn't decide when valid challenges happen.  Inspect your proxy config. In the classical
+setup the tokens are bound to the client IP address, so users whose IPs change very often (some mobile carriers) will hit POWBlock
+much more frequently.  For such cases you may wish to use your proxy to pass device fingerprints in a header and hash that with the
+secret instead of their IP. If you take this approach we suggest using the vanilla JA4 or JA3N TLS fingerprints, but be aware that
+if your web stack supports HTTP/3 then TLS fingerprints become non-deterministic since the same client will have different prints 
+depending on whether the HTTP/3 or HTTP/2 connection completes first, and this can change from request to request.  If you find 
+yourself in this boat we suggest locking your proxy to only HTTP/2 traffic via ALPN, or even HTTP1.1 if you don't need the fancy 
+features.  Other factors related to your stack or the client's browser behavior may also cause fingerprints to change, so be aware.
+
+The domain set by X-PoW-HostDomain isn't working correctly - POWBlock validates the domain to RFC2965 for maximum compatibility.
+It begins with a leading dot:
+Valid:  .example.com (scopes example.com and all subdomains of it including www)	.subdomain.example.com (scopes only to this subdomain)
+Invalid:  example.com	subdomain.example.com
+Alternatively you might have your remote, HTTPS protected POW server *not* set as a *transparent* backend. The client should never
+see the HTTPS domain of the POWBlock server in their browser - only your origin website's domain.
+
+POWBlock 1.8.x Series "Jehuty" Limits
+================================================================
+
+- Maximum concurrent connections : 8192     (hard cap)
+- Max connections per single IP  : 20       (hard cap)
+- Request rate limit             : 100/120s total, 12/300s submissions (per IP, sliding window)
+- Slowloris / header timeout     : 30 seconds
+- Default connection lifetime    : 420 seconds (-ctime flag)
+- Connection sweep runs every    : 20 seconds (zombie & timeout cleanup)
+- Trickle protection             : drops after 60 reads < 17 bytes
+================================================================
