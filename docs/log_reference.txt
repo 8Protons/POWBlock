@@ -1,0 +1,68 @@
+Logging invariants:
+
+- All logs use fprintf(stderr) and DROP logs are individually throttled.
+- Attack-relevant logs all follow the pattern "[POWBLOCK] DROP ... from IP ..." to facilitate easy Fail2ban parsing.
+- Log entries and messages are the following list (some require -debug mode):
+
+POWBlock Standard Log Messages Reference
+================================
+Startup / Info Logs:
+=== POWBlock v1.8.6 'Jehuty' Started ===
+Port               : %d
+Difficulty         : %d bits
+Connection Timeout : %d seconds (CTime)
+Hash Algorithm     : SHA-%d
+Challenge Page     : %s (%zu bytes)
+=== DEBUG MODE ENABLED ===
+=== LICENSE VALID ===
+=== INVALID LICENSE KEY ===
+=== LOOSE MODE ENABLED === Warning: Reduced security...
+=== SILENT MODE ENABLED ===
+=== GPU BUSTER ENABLED === Fast solve threshold: %d ms
+Loaded challenge template from %s (%zu bytes)
+Failed to open challenge page '%s': %s
+Challenge page '%s' is empty
+Failed to allocate %ld bytes for template
+Short read on challenge page '%s'
+Failed to generate fallback HMAC secret
+
+DROP/Security Logs:
+[POWBLOCK] DROP RateLimit from %s
+[POWBLOCK] DROP SubmissionLimit from %s
+[POWBLOCK] DROP MaxIPConns from %s
+[POWBLOCK] DROP Trickling from %s
+[POWBLOCK] DROP LifetimeSweep from %s
+[POWBLOCK] DROP SlowlorisSweep from %s
+[POWBLOCK] DROP BadHMAC from %s
+[POWBLOCK] DROP WeakPOW %d vs %d bits from %s
+[POWBLOCK] DROP InsaneSubmission from %s
+[POWBLOCK] DROP LifetimeOut from %s
+[POWBLOCK] DROP Slowloris from %s
+[POWBLOCK] DROP BogeyFastMover %ld ms vs %d from %s
+[POWBLOCK] DROP MismatchIP token %s vs current %s%s from %s
+[POWBLOCK] DROP ChallengeExpired ts %ld vs now %ld timeout %d from %s
+
+Other Operational Logs:
+[POWBLOCK] Cleared %d stale IP rate-limit entries
+[POWBLOCK] WARNING: Rate table high collision pressure from %s (probes=%d)
+[POWBLOCK] Shutting down...
+
+Logs that require -debug:
+[POWBLOCK] rearm_for_read failed for %s (fd=%d): %s
+[POWBLOCK] rearm_for_write failed for %s (fd=%d): %s
+[POWBLOCK] DEBUG: No powblock= found from %s
+[POWBLOCK] DEBUG: No pbchal= found from %s
+[POWBLOCK] DEBUG: base64 decoded len=%zu from %s
+[POWBLOCK] DEBUG: Bad payload length %zu from %s
+[POWBLOCK] DEBUG: Payload starts with: %.100s from %s
+[POWBLOCK] DEBUG: Payload parse failed (fields=%d) from %s
+[POWBLOCK] DEBUG: Client request line: %.1000s...
+[POWBLOCK] DEBUG: Extracted pbchal token len=%zu from %s
+[POWBLOCK] DEBUG: No challenge template loaded - cannot serve challenge
+[POWBLOCK] DEBUG: Entropy failure in challenge from %s
+[POWBLOCK] getrandom failed, using /dev/urandom fallback
+[POWBLOCK] All entropy sources failed for %zu bytes
+Dumps raw and normalized headers (comparison/parser debugging)
+
+
+================================
