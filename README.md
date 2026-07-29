@@ -32,4 +32,4 @@ Our largest production server has used a POWBlock stack since early 2025.  Hapro
 
 **Q:**  *"Is this vibe coded slopware?"*
 
-POWBlock was written by hand, using Xed, by a single programmer over a period of two and a half years.  A half-dozen other developers assisted with the early concept, bug testing, red-teaming, feature feedback, and browser UX/performance work.  Some AI was used since 2025 in the various "4am coredump analysis" sessions and general debugging work, but POWBlock is 100% a human creation.
+POWBlock was written by hand, using Xed, by a single programmer over a period of two and a half years.  A half-dozen other developers assisted with the early concept, bug testing, red-teaming, feature feedback, and browser UX/performance work.  Some AI was used since 2025 in the various "4am coredump analysis" sessions and general debugging work (and on making these github pages because easy markdowns), but POWBlock is 100% a human creation.
