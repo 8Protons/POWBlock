@@ -193,3 +193,111 @@ Buying a **license** gives an advanced user a lot more power and granularity:
 A license makes nearly all of POWBlock's settings customizable from client to client, or even from request to request. You are not gimped without them, but the overrides are a great quality-of-life upgrade for a small "lifetime, unlimited copies" shareware fee. 
 
 To read more, check out the details in the big technical readme.
+
+## Part 5: Statistics & Monitoring
+
+POWBlock features a plaintext statistics readout that displays real-time performance data and historical counts tracked since system startup.
+
+### Monitored Metrics
+
+#### System & Performance
+* **Uptime:** Total running time in seconds since startup.
+* **Current Active Connections:** The number of active connections open right now.
+* **Total Requests Processed:** Combined count of all processed network requests.
+* **Average Requests Per Second:** The historical throughput average since startup.
+
+#### Proof of Work (PoW) Details
+* **Valid POW Tokens Issued:** The total number of successful challenges solved.
+* **Average POW Solve Time:** The average duration across all users to solve a challenge.
+* **Failed Challenges:** Counts malformed answers, answers falling below the required difficulty, and speed limit rejections when `-fast` is active.
+
+#### Network Mitigation & Drops
+* **Client IP Hash Table:** Tracks approximately 100,000 IPs for rate limiters and connection management.
+* **Rate Limit Hits:** Triggered by global requests exceeding limits from a single IP.
+* **Submission Limit Hits:** Triggered when a single IP submits too many PoW answers.
+* **IP Mismatches:** Client failures where the solution came from a different IP than the challenge recipient.
+* **Invalid HMAC Fails:** Client failures caused by exceeding the `ctime` limit or attempting to reuse/forge a challenge token.
+* **Slowloris Drops:** Triggered when a client sends no data for 30+ seconds.
+* **Timeout Drops:** Occurs when a client exceeds the `ctime` limit before completion (rarely seen, as Slowloris drops typically catch these first).
+* **Trickle Drops:** Dropped connections caused by a client sending too many sequential tiny packets.
+* **Max Connection Drops:** Triggered when a single client attempts to open more than 20 simultaneous PoW challenges.
+
+---
+
+### Accessing the Readout
+
+You can retrieve these statistics by making a local request to the `/POWBlockStats` endpoint using `curl`. 
+
+#### Basic Local Request
+```bash
+curl localhost:9001/POWBlockStats
+```
+
+#### Request with Authentication
+If you have configured authentication keys, include them via the custom request header:
+```bash
+curl -H "X-PoW-ClientAuth:fooauthkeybar123" localhost:9001/POWBlockStats
+```
+
+#### Live Monitoring
+You can turn this output into a live, auto-refreshing feed using the Linux `watch` command (e.g., updating every 5 seconds):
+```bash
+watch -n 5 'curl localhost:9001/POWBlockStats'
+```
+
+> [!NOTE]
+> **Multi-Instance Environments:** Executing this command on a host running multiple POWBlock instances will poll a single instance at random due to kernel load-balancing. To estimate overall cluster performance, multiply the visible stats by the total number of running POWBlock instances.
+
+---
+
+### Important Security Consideration
+
+The `/POWBlockStats` page is technically accessible from the public web unless you explicitly block the path at your proxy layer. 
+
+Because incoming clients requiring a challenge are routed to the POWBlock port by the proxy, an external user sending a request with an `X-Original-URL` header set to `/POWBlockStats` will bypass the challenge page and see your system metrics. This was left in the code because it can be a handy quirk for the admin during setup, but be aware of it and block the URL once you no longer need it.
+
+## Part 6: Security & Configuration Basics
+
+### 1. Firewall Isolation
+
+Configure your firewall to ensure that POWBlock is isolated and can only be reached by your reverse proxies. 
+
+If you are running POWBlock on a local machine using UFW (Uncomplicated Firewall), you can lock down access with the following commands:
+
+```bash
+# Allow administrative access
+sudo ufw allow ssh
+
+# Set default incoming policy to drop traffic
+sudo ufw default deny incoming
+
+# Restrict POWBlock port access exclusively to localhost
+sudo ufw allow from 127.0.0.1 to any port 9001 proto tcp
+
+# Enable the firewall configuration
+sudo ufw enable
+```
+
+> [!TIP]
+> If this is your first time setting up the host firewall, remember to explicitly open the ports for your external services (such as port `443` for your public-facing reverse proxy or web application):
+> ```bash
+> sudo ufw allow 443/tcp
+> ```
+
+---
+
+### 2. Secret Key Rotation
+
+Regularly rotate your `X-PoW-Secret` key as part of your standard infrastructure maintenance. It is highly recommended to force an immediate rotation of this key if you detect or suspect that your system is actively under a targeted attack.
+
+---
+
+### 3. IP Normalization
+
+We strongly suggest using your reverse proxy layer to normalize and flatten the incoming client IP addresses before passing them to POWBlock via the `X-Client-IP` header. 
+
+Cleaning up addresses at the proxy prevents processing errors caused by:
+* Multiple proxy layers stacking up addresses inside `X-Forwarded-For` headers.
+* Mixed or concatenated IPv4/IPv6 strings sent by certain downstream ISPs.
+
+While POWBlock contains internal logic to handle malformed IP addresses gracefully, sanitizing and flattening the data at your perimeter proxy ensures predictable and consistent rate-limiting behavior.
