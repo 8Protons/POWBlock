@@ -64,10 +64,10 @@ set req.http.X-PoW-Secret = "xxxyyyzzz123123aaaaaaaaaaaaabbbbbbbbbbbbbbbbb000000
 # Set real client IP
 set req.http.X-Client-IP = client.ip;
 
-# Expected token = SHA256(client.ip + secret)
+# Expected token = SHA256(client.ip + secret) using libvmod-digest
 set req.http.X-PoW-Expected = digest.hash_sha256(req.http.X-Client-IP + req.http.X-PoW-Secret);
 
-# Read POW_TOKEN cookie
+# Read POW_TOKEN cookie using import cookie from the Standard vmod
 cookie.parse(req.http.Cookie);
 set req.http.X-PoW-Token = cookie.get("POW_TOKEN");
 
