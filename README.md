@@ -6,6 +6,12 @@ POWBlock is a simple, high performance proof-of-work gateway that sits behind an
 
 No fancy UI, no bloated framework, no exotic runtime, no massive dependency list - just a single ~1MB drop-in binary with zero dependencies that runs on basically anything and scales linearly if you spin up multiple instances.  POWBlock can be controlled by HTTP headers injected by your proxy or server and does not require any integration with your website code to work - No embeds, no widgets, no Wordpress plugins needed.  It's built on the classic UNIX philosophy to do exactly one job, and to do it well.  It does this while using absolutely minimal system resources and presenting an absolutely minimal attack surface, and is especially designed to operate under the control of your existing stack. It is proof-of-work defense *as a primitive* and is the first of its kind.
 
+> [!TIP]
+> ### 🚀 Getting Started
+> Ready to deploy? Skip the heavy reading and jump straight to our deployment guide:
+> **[Read the Quick Start Guide →](quickstart.md)**
+
+
 **How it Works:**
 
 You put it on your server, guard it with your firewall, and run it with the options you want like POW difficulty, solve time limits, etc.  Then you add a POWBlock Controller to your reverse proxy or webserver config so that it can be used.  The controller is just some config code that makes your proxy collect the client data that POWBlock needs, generate a hash that identifies that client, compare that hash to the client's cookie, and then pass the client and their data to POWBlock if the cookie is invalid.  POWBlock does the rest.
