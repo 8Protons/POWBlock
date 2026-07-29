@@ -44,7 +44,7 @@ POWBlock was written by hand, using Xed, by a single programmer over a period of
 
 POWBlock is shareware. *Good* shareware we hope, because we only gate the optional "enterprise-level" super-nerd stuff behind a paid license and give 100% of the main features for free.  But for that reason the source code is closed and private. That being said, we're not scared of code reviews. If you're a bone fide security researcher willing to sign an NDA and publicly vouch for what you find, we can let you look at it.
 
-**Q:**  *"How do I buy a license or just contribute to the awesome free version."*
+**Q:**  *"How do I buy a license or just contribute to the awesome free version?"*
 
 Reach out to us and/or drop some crypto. A license key is a flat 50 US dollars. If you buy as an individual operator, the key is valid for your lifetime for as many copies as you want, any where you want, just as long as you are the sole owner/renter of the physical servers you deploy on. Corporate/government entities need 1 license key for each US State and/or non-US country they plan to deploy it in, but can do unlimited deployments in any such place that they have a license.
 
