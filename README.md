@@ -1,4 +1,4 @@
-Introduction:
+![Introduction](https://github.com/8Protons/POWBlock/blob/main/docs/powblocklogo.png)
 
 **What is POWBlock:**
 
