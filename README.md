@@ -10,7 +10,7 @@ No fancy UI, no bloated framework, no exotic runtime, no massive dependency list
 
 You put it on your server, guard it with your firewall, and run it with the options you want like POW difficulty, solve time limits, etc.  Then you add a POWBlock Controller to your reverse proxy or webserver config so that it can be used.  The controller is just some config code that makes your proxy collect the client data that POWBlock needs, generate a hash that identifies that client, compare that hash to the client's cookie, and then pass the client and their data to POWBlock if the cookie is invalid.  POWBlock does the rest.
 
-![POWBlock Flowchart](/docs/powblock_chart.png)
+![POWBlock Flowchart](https://github.com/8Protons/POWBlock/blob/main/docs/powblock_flow.png)
 
 **F.A.Q:**
 
