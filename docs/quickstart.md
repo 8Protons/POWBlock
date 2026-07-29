@@ -170,10 +170,10 @@ Missing flags will automatically revert to default settings. Flag order does not
 | :--- | :--- |
 | `-help` / `-h` / `--h` | Displays a compact manual summarizing key points from the documentation. |
 | `-port` | The local port you want POWBlock to run on. **Default: `9001`** |
-| `-difficulty` | The number of leading 0 bits required for a proof of work to validate. 17 is low, 22 is very hard, min/max is 12/32. **Default: `20`** |
+| `-diff` | The number of leading 0 bits required for a proof of work to validate. 17 is low, 22 is very hard, min/max is 12/32. **Default: `20`** |
 | `-ctime` | The time in seconds that client connections can last and how much time each client gets to solve the proof of work. **Default: `420`** |
-| `-authkey` | Your secret string that powblock checks to make sure traffic is coming from an authorized proxy. Proxy must send this key via the `X-PoW-ClientAuth` header per request. 8 chars minimum. *(Licensed POWBlock only)* |
-| `-hashvalue` | Specify `256` or `512` to select SHA256 or SHA512 proof of work. **Default: `256`** |
+| `-auth` | Your secret string that powblock checks to make sure traffic is coming from an authorized proxy. Proxy must send this key via the `X-PoW-ClientAuth` header per request. 8 chars minimum. *(Licensed POWBlock only)* |
+| `-hash` | Specify `256` or `512` to select SHA256 or SHA512 proof of work. **Default: `256`** |
 | `-cpage` | Takes an absolute path to a challenge page html file. **Default: looks for `powchallenge.html` in the active working directory** |
 | `-debug` | Enables very verbose debug logging to the console/syslog. |
 | `-loose` | Disables base64 format validation in the sanity checker and ignores the last IP octet when validating the IP bind between challenge and submission. *(Convenient for oddball browsers, private VPNs, TOR, etc.)* |
@@ -187,8 +187,8 @@ Missing flags will automatically revert to default settings. Flag order does not
 POWBlock is shareware. The **free version** gives you everything you need to protect your website against scrapers, bots, spam, and some DDoS attacks. 
 
 Buying a **license** gives an advanced user a lot more power and granularity:
-* **Override Headers:** Unlocks a suite of headers passed from your proxy to fine-tune POWBlock on-the-fly (e.g., give clients on gaming PCs harder PoW than clients on phones).
-* **Network Scaling:** Run 20 POWBlocks on a big server to service your entire network using the `ClientAuth` header.
+* **Override Headers:** Unlocks a suite of headers passed from your proxy to fine-tune POWBlock on-the-fly (e.g., give clients on phones easier PoW than clients on PC).
+* **Network Scaling:** Run 20 POWBlocks on a big server to service your entire network using the `ClientAuth` header to secure all the proxy connections.
 
 A license makes nearly all of POWBlock's settings customizable from client to client, or even from request to request. You are not gimped without them, but the overrides are a great quality-of-life upgrade for a small "lifetime, unlimited copies" shareware fee. 
 
