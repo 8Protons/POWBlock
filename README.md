@@ -1,28 +1,29 @@
 Introduction:
 
-What is POWBlock:  
+**What is POWBlock:**
+
 POWBlock is a simple, high performance proof-of-work gateway that sits behind any reverse proxy or server. Written in pure C with EPOLL, and including a separate challenge page with HTML and inline javascript, it is a self-contained program that provides high-speed, high-volume, hardware optimized proof-of-work defense as a microservice.  You point your proxy at it, it serves a tiny JavaScript challenge page that forces the client to burn CPU cycles mining a SHA-256 or SHA-512 hash with enough leading zeros, and if they succeed it hands back a cookie (POW_TOKEN) that lets them through to your main site and then redirects them where they wanted to go. 
 
 No fancy UI, no bloated framework, no exotic runtime, no massive dependency list - just a single ~1MB drop-in binary with zero dependencies that runs on basically anything and scales linearly if you spin up multiple instances.  POWBlock can be controlled by HTTP headers injected by your proxy or server and does not require any integration with your website code to work - No embeds, no widgets, no Wordpress plugins needed.  It's built on the classic UNIX philosophy to do exactly one job, and to do it well.  It does this while using absolutely minimal system resources and presenting an absolutely minimal attack surface, and is especially designed to operate under the control of your existing stack. It is proof-of-work defense *as a primitive* and is the first of its kind.
 
-How it Works:
+**How it Works:**
 
 You put it on your server, guard it with your firewall, and run it with the options you want like POW difficulty, solve time limits, etc.  Then you add a POWBlock Controller to your reverse proxy or webserver config so that it can be used.  The controller is just some config code that makes your proxy collect the client data that POWBlock needs, generate a hash that identifies that client, compare that hash to the client's cookie, and then pass the client and their data to POWBlock if the cookie is invalid.  POWBlock does the rest.
 
-F.A.Q:
+**F.A.Q:**
 
-"Proof-of-Work isn't even hard, why bother with this?":
+**Q:**  *"Proof-of-Work isn't even hard, why bother with this?":*
 
 PoW isn't hard in concept but neither is sending an email or editing some text.  The devil is in the details - implementation, security, performance, modularity, separations of concerns and ease of use.  Using POWBlock takes all of the guesswork and "site-specific toy" aspects out of the PoW concept entirely.  Its a tiny, torture-tested, composable daemon that does all of the heavy lifting for you while still letting you own the stack.  Instead of writing/testing/debugging a hand-rolled PoW scheme in your stack's custom lang that takes resources from your backend, only works on your website, and breaks with every other update, you can use one tiny program that works anywhere without fuss.
 
-"Why not just throw Anubis/etc out front instead?":
+**Q:**  *"Why not just throw Anubis/etc out front instead?":*
 
 POWBlock is ~1/60th the size of Anubis, has ~7x higher performance on an 8-core benchmark machine, gives you full customization (including challenge logic, logos, challenge page text, etc) in the free version, composes with ordinary Linux admin tools that you already have, can use any kind of logic you can put in your existing server, handles thousands of requests per second with single-digit CPU use, resists nearly all typical anti-PoW bypass methods, and keeps you in complete control of your traffic.  POWBlock scales without a load balancer, is immune to mutex thrashing, works locally or remotely, with or without a CDN, solo or clustered, bare metal or containerized, and works with roundrobin DNS and even over Tor *all right out of the box, in the free version.*  Anubis and tools like it are low performance, monolithic blobs that have to middleman your whole stack and have way too many concerns to be performant or truly secure.  POWBlock does its one job as needed and otherwise stays out of your way.
 
-"Is this all just theory and hype or has this thing seen real use?"
+**Q:**  *"Is this all just theory and hype or has this thing seen real use?"*
 
 Our largest production server has used a POWBlock stack since early 2025.  Haproxy sits out front handling TLS termination and edge rate limiting, FOSS Varnish Cache sits behind Haproxy doing our caching/routing and running a POWBlock controller written in VCL.  A single POWBlock runs behind Varnish.  Three of these stacks are the forward nodes of a roundrobin DNS network serving a single origin that gets ~1.1 million visitors and over 1 billion requests per month.  POWBlock has stopped more than 99% of all automated spam and has successfully held off request-flood DDoS attacks as large as 250,000 RPS without needing to scale.  It has been targeted with tuned traffic, hack attacks, buffer overflows, ASIC PoW cracker bots, and worse.  And it lowered our bandwidth use by nearly 35% due to blocking so many scraper bots.  We're only doing a public release *because* it has proven itself so well and development will continue as any new issues are discovered.
 
-"Is this vibe coded slopware?"
+**Q:**  *"Is this vibe coded slopware?"*
 
 POWBlock was written by hand, using Xed, by a single programmer over a period of two and a half years.  A half-dozen other developers assisted with the early concept, bug testing, red-teaming, feature feedback, and browser UX/performance work.  Some AI was used since 2025 in the various "4am coredump analysis" sessions and general debugging work, but POWBlock is 100% a human creation.
