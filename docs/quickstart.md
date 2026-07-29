@@ -41,7 +41,7 @@ You need to implement the following logic in your proxy/server:
 3. Set `X-Client-IP` to the real client IP.
 4. Set `X-Original-URL` to the requested URL.
 5. Compute `X-PoW-Expected` = `HASH(X-Client-IP + X-PoW-Secret)`.
-6. Check the client's `POW_TOKEN` cookie.
+6. Check the client's `POW_TOKEN` cookie and compare to `X-PoW-Expected`.
 7. If the token is missing or doesn't match then route to POWBlock.  
    If it matches then route to your main origin.
 
