@@ -8,8 +8,8 @@ No fancy UI, no bloated framework, no exotic runtime, no massive dependency list
 
 > [!TIP]
 > ### 🚀 Getting Started
-> Ready to deploy? Skip the heavy reading and jump straight to our deployment guide:
-> **[Read the Quick Start Guide →](quickstart.md)**
+> Ready to deploy? Skip straight to our deployment guide:
+> **[Read the Quick Start Guide →](https://github.com/8Protons/POWBlock/blob/main/docs/quickstart.md)**
 
 
 **How it Works:**
