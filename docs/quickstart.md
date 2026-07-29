@@ -301,3 +301,67 @@ Cleaning up addresses at the proxy prevents processing errors caused by:
 * Mixed or concatenated IPv4/IPv6 strings sent by certain downstream ISPs.
 
 While POWBlock contains internal logic to handle malformed IP addresses gracefully, sanitizing and flattening the data at your perimeter proxy ensures predictable and consistent rate-limiting behavior.
+
+## Part 7: Integrating Fail2ban for Automated Jailing
+
+It can be very advantageous to incorporate Fail2ban into your POWBlock stack. By analyzing system logs, Fail2ban can place timed firewall bans on hostile IPs that repeatedly trigger connection drops or fail challenges.
+
+### 1. Create the Custom Filter
+Create a filter file to define the regular expression that matches POWBlock drop events. 
+
+Save this file as `/etc/fail2ban/filter.d/powblock.conf`:
+
+```ini
+[Definition]
+# Catches all drop types (rate-limits, max connections, trickle, slowloris, etc.)
+failregex = ^.*?\[POWBLOCK\] DROP .*? from <HOST>\$
+
+ignoreregex =
+```
+
+---
+
+### 2. Configure the Jail
+Create a jail configuration to define the ban criteria, log source, and firewall actions. 
+
+Save this file as `/etc/fail2ban/jail.d/powblock.local`:
+
+```ini
+[powblock]
+enabled   = true
+port      = http,https
+filter    = powblock
+backend   = systemd
+
+# Automatically matches any systemd instance (powblock@1, powblock@2, etc.)
+journalmatch = _SYSTEMD_UNIT=powblock@*.service
+
+# Ban policy
+maxretry  = 8
+findtime  = 3600
+bantime   = 7200
+ignoreip  = 127.0.0.1/8 ::1
+action    = %(action_)s
+```
+
+> [!NOTE]
+> **Running inside Systemd Nspawn Containers:** If POWBlock runs inside a container but Fail2ban runs on the host server, you must isolate the container's log stream using its machine ID. 
+> 1. Run this command on the host to find the container's ID:
+>    ```bash
+>    sudo journalctl -M CONTAINERNAME -u 'powblock@*.service' -n 5 -o json-pretty
+>    ```
+> 2. Replace the `journalmatch` line in your jail configuration with the resulting `_MACHINE_ID`:
+>    ```ini
+>    journalmatch = _MACHINE_ID=016c82e452b12902a713b39c83985654 + _SYSTEMD_UNIT=powblock@*.service
+>    ```
+
+---
+
+### 3. Monitoring Bans
+
+Once configured and restarted, you can check the status of your active IP bans directly from the host terminal:
+
+```bash
+sudo fail2ban-client status powblock
+```
+
