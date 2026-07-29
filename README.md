@@ -14,6 +14,10 @@ You put it on your server, guard it with your firewall, and run it with the opti
 
 **F.A.Q:**
 
+**Q:**  *"What proxies/servers does this work best with?":*
+
+To be usable with POWBlock a proxy/server needs to be able to do 4 things:  Set and unset HTTP headers, read client cookie values, direct to different backends based on a string match, and perform some kind of deterministic hash or string obfuscation operation.  When you consider all the little plugins, mods, addons and hacks out there, this pretty much means "every server can use POWBlock, some just do it better/easier than others."  So almost any server can work, but the more power and control logic it gives you, the better.  Varnish Cache is ideal, but Openresty and Haproxy+Lua are very strong contenders as well.  Pipy is an excellent choice for a small stack and we plan to offer it as a bundle eventually.  Vanilla Nginx works well but you only have md5 hashing to work with, and Apache has its natural limitations too.
+
 **Q:**  *"Proof-of-Work isn't even hard, why bother with this?":*
 
 PoW isn't hard in concept but neither is sending an email or editing some text.  The devil is in the details - implementation, security, performance, modularity, separations of concerns and ease of use.  Using POWBlock takes all of the guesswork and "site-specific toy" aspects out of the PoW concept entirely.  Its a tiny, torture-tested, composable daemon that does all of the heavy lifting for you while still letting you own the stack.  Instead of writing/testing/debugging a hand-rolled PoW scheme in your stack's custom lang that takes resources from your backend, only works on your website, and breaks with every other update, you can use one tiny program that works anywhere without fuss.
