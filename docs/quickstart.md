@@ -145,7 +145,7 @@ This is enough in ~80% of cases. It uses a POW difficulty of 20, listens on port
 #### Run with Flags
 Missing flags will automatically revert to default settings. Flag order does not matter:
 ```bash
-./powblock186J -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
+./powblock186J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
 ```
 
 **Example Custom Execution:**
