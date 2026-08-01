@@ -42,7 +42,7 @@ POWBlock was written by hand, using Xed, by a single programmer over a period of
 
 **Q:**  *"Then where's the source code?"*
 
-POWBlock is shareware. *Good* shareware we hope, because we only gate the optional "enterprise-level" super-nerd stuff behind a paid license and give 100% of the main features for free.  But for that reason the source code is closed and private. That being said, we're not scared of code reviews. If you're a bone fide security researcher willing to sign an NDA and publicly vouch for what you find, we can let you look at it.
+POWBlock is shareware. *Good* shareware we hope, because we only gate the optional "enterprise-level" super-nerd stuff behind a paid license and give 100% of the main features for free.  But for that reason the source code is closed and private. That being said, we're not scared of code reviews. If you're a bona fide security researcher willing to sign an NDA and publicly vouch for what you find, we can let you look at it.
 
 **Q:**  *"How do I buy a license or just contribute to the awesome free version?"*
 
