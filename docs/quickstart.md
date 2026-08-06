@@ -73,7 +73,7 @@ set req.http.X-PoW-Token = cookie.get("POW_TOKEN");
 
 # If no token or token doesn't match → send to POWBlock
 if (!req.http.X-PoW-Token || req.http.X-PoW-Token != req.http.X-PoW-Expected) {
-    set req.backend_hint = powblock;
+    set req.backend_hint = powblock;   # Don't forget to set up the backend in default.vcl!
     set req.http.X-Original-URL = req.url;   # Where to redirect after success
     return (pass);   # Never cache POWBlock requests
 }
