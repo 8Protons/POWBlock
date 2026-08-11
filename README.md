@@ -48,7 +48,17 @@ POWBlock is shareware. *Good* shareware we hope, because we only gate the option
 
 Reach out to us and/or drop some crypto. A license key is a flat 50 US dollars. If you buy as an individual operator, the key is valid for your lifetime for as many copies as you want, any where you want, just as long as you are the sole owner/renter of the physical servers you deploy on. Corporate/government entities need 1 license key for each US State and/or non-US country they plan to deploy it in, but can do unlimited deployments in any such place that they have a license.
 
-### 🎁 Donations
+Send us an email containing the following:  
+
+Coin type used (BTC/ETH/XMR)  
+Transaction Number/ID  
+Your official Email address  
+The website URL you're deploying for  
+Whether this is a Personal or Corporate License  
+If Corporate, provide the US State/Foreign Country  
+
+and we'll check it out and send your license key right to your Email.  
+
 | Coin | Wallet Address |
 | :--- | :--- |
 | **Bitcoin** | `1P1k9QcTMJ2qC4rNzy27v6J93vpWQYWHuK` |
