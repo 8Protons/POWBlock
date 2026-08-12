@@ -49,7 +49,7 @@ You need to implement the following logic in your proxy/server:
 
 ```vcl
 # =============================================
-# POWBlock Controller - Varnish VCL
+# POWBlock Controller - Varnish VCL (goes at the top of sub vcl_recv)
 # =============================================
 
 # Prevent clients from spoofing control headers (CRITICAL)
@@ -176,6 +176,7 @@ Missing flags will automatically revert to default settings. Flag order does not
 | `-hash` | Specify `256` or `512` to select SHA256 or SHA512 proof of work. **Default: `256`** |
 | `-cpage` | Takes an absolute path to a challenge page html file. **Default: looks for `powchallenge.html` in the active working directory** |
 | `-debug` | Enables very verbose debug logging to the console/syslog. |
+| `-fast` | Rejects clients that solve faster than [milliseconds] and logs a DROP. |
 | `-loose` | Disables base64 format validation in the sanity checker and ignores the last IP octet when validating the IP bind between challenge and submission. *(Convenient for oddball browsers, private VPNs, TOR, etc.)* |
 | `-silent` | Disables all client-side error messages (429, 400, etc.) and forces silent drops on errors. |
 | `-license` | Accepts a 16+ char POWBlock license key that enables optional control headers. |
@@ -188,7 +189,7 @@ POWBlock is shareware. The **free version** gives you everything you need to pro
 
 Buying a **license** gives an advanced user a lot more power and granularity:
 * **Override Headers:** Unlocks a suite of headers passed from your proxy to fine-tune POWBlock on-the-fly (e.g., give clients on phones easier PoW than clients on PC).
-* **Network Scaling:** Run 20 POWBlocks on a big server to service your entire network using the `ClientAuth` header to secure all the proxy connections.
+* **Network Scaling:** Run 20 POWBlocks on a big server to service your entire network using the `X-PoW-ClientAuth` header to secure all the proxy connections.
 
 A license makes nearly all of POWBlock's settings customizable from client to client, or even from request to request. You are not gimped without them, but the overrides are a great quality-of-life upgrade for a small "lifetime, unlimited copies" shareware fee. 
 
