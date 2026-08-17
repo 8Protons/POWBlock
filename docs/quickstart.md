@@ -190,6 +190,7 @@ POWBlock is shareware. The **free version** gives you everything you need to pro
 Buying a **license** gives an advanced user a lot more power and granularity:
 * **Override Headers:** Unlocks a suite of headers passed from your proxy to fine-tune POWBlock on-the-fly (e.g., give clients on phones easier PoW than clients on PC).
 * **Network Scaling:** Run 20 POWBlocks on a big server to service your entire network using the `X-PoW-ClientAuth` header to secure all the proxy connections.
+* **Subdomains and Cross-domain Cookies:** You can enable POWBlock tokens to work across complex websites that load assets from subdomains, or use a single POWBlock server to handle PoW gate duty for multiple websites at once. These require the X-PoW-HostDomain override header.
 
 A license makes nearly all of POWBlock's settings customizable from client to client, or even from request to request. You are not gimped without them, but the overrides are a great quality-of-life upgrade for a small "lifetime, unlimited copies" shareware fee. 
 
