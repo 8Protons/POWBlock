@@ -30,7 +30,7 @@ Pretty much any browser newer than ~2014.  The default 'powchallenge.html' inclu
 
 **Q:**  *"Proof-of-Work isn't even hard, why bother with this?":*
 
-PoW isn't hard in concept but neither is sending an email or editing some text.  The devil is in the details - implementation, security, performance, modularity, separations of concerns and ease of use.  Using POWBlock takes all of the guesswork and "site-specific toy" aspects out of the PoW concept entirely.  Its a tiny, torture-tested, composable daemon that does all of the heavy lifting for you while still letting you own the stack.  Instead of writing/testing/debugging a hand-rolled PoW scheme in your stack's custom lang that takes resources from your backend, only works on your website, and breaks with every other update, you can use one tiny program that works anywhere without fuss.
+PoW isn't hard in concept but neither is sending an email or editing some text.  The devil is in the details - implementation, security, performance, modularity, separations of concerns and ease of use.  Using POWBlock takes all of the guesswork and "site-specific toy" aspects out of the PoW concept entirely.  Its a tiny, torture-tested, composable daemon that does all of the heavy lifting for you while still letting you own the stack.  Instead of writing/testing/debugging a hand-rolled PoW scheme in your stack's custom lang that takes resources from your backend, only works on your website, and breaks with every other update, you can use one tiny program that works anywhere without fuss, and that takes the bullet for your backend if you come under attack.
 
 **Q:**  *"Why not just throw Anubis/etc out front instead?":*
 
