@@ -1,3 +1,5 @@
+![cpage](https://github.com/8Protons/POWBlock/blob/main/docs/challengepage.png)
+
 # Setting Up Your POWBlock Controller
 
 The most important step in integrating POWBlock is **writing your basic controller**. This guide walks you through the core concepts and a working implementation so you can understand how POWBlock logic works and integrates with your web stack.
@@ -225,6 +227,7 @@ POWBlock features a plaintext statistics readout that displays real-time perform
 * **Max Connection Drops:** Triggered when a single client attempts to open more than 20 simultaneous PoW challenges.
 
 ---
+![stats](https://github.com/8Protons/POWBlock/blob/main/docs/statspage.png)
 
 ### Accessing the Readout
 
