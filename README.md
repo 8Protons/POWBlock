@@ -8,7 +8,7 @@ No fancy UI, no bloated framework, no exotic runtime, no massive dependency list
 
 > [!TIP]
 > ### 🚀 Getting Started
-> Ready to deploy? Skip straight to our deployment guide:
+> Ready to deploy? Download the latest release package from the menu on your right and:
 > **[Read the Quick Start Guide →](https://github.com/8Protons/POWBlock/blob/main/docs/quickstart.md)**
 
 
@@ -43,6 +43,7 @@ Our largest production server has used a POWBlock stack since early 2025.  Hapro
 **Q:**  *"Is this vibe coded slopware?"*
 
 POWBlock was written by hand, using Xed, by a single programmer over a period of two and a half years.  A half-dozen other developers assisted with the early concept, bug testing, red-teaming, feature feedback, and browser UX/performance work.  Some AI was used since 2025 in the various "4am coredump analysis" sessions and general debugging work (and on making these github pages because easy markdowns), but POWBlock is 100% a human creation.
+![vibe coding check, ironically by AI](https://github.com/8Protons/POWBlock/blob/main/docs/vibecheck.png)
 
 **Q:**  *"Then where's the source code?"*
 
