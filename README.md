@@ -22,7 +22,16 @@ You put it on your server, guard it with your firewall, and run it with the opti
 
 **Q:**  *"What proxies/servers does this work best with?":*
 
-To be usable with POWBlock a proxy/server needs to be able to do four things:  Set and unset HTTP headers, read client cookie values, direct to different backends based on a string match, and perform some kind of deterministic hash or string obfuscation operation.  When you consider all the little plugins, mods, addons and hacks out there, this pretty much means "every server can use POWBlock, some just do it better/easier than others."  The more power and control logic your proxy/server gives you, the better because you can use this logic to make any custom rules that you might want for your website. **Varnish Cache** is ideal, but **Openresty** and **Haproxy+Lua** are very strong contenders as well.  **Pipy** is an excellent choice for a small stack and we plan to offer it as a bundle eventually.  **Nginx** works well when using the nginx-module-njs plugin available in most repos, and Apache can use it but has natural limitations in terms of connection capacity that make it less than ideal for a PoW gate.
+POWBlock is designed to run behind your existing reverse proxy as an alternate backend. Your proxy needs to be able to do just a few things to make use of it:  
+
+1:  Read client cookies and extract their values  
+2:  Compare strings, and direct traffic to different backends based on string matching  
+3:  SHA-256 digest, MD5 crypto, or an equivalent basic hashing operation  
+4:  Set and strip custom http headers  
+
+Basically every reverse proxy can do these things, though you might need to install the appropriate plugins like libvmod-digest and vmod-standard for Varnish or use a small Lua script with Haproxy for example. When you consider all the little plugins, mods, addons and hacks out there, this pretty much means "every server can use POWBlock, some just do it better/easier than others."  The more power and control logic your proxy/server gives you, the better because you can use this logic to make any custom rules that you might want for your website.
+
+**Varnish Cache** is ideal, but **Openresty** and **Haproxy+Lua** are very strong contenders as well.  **Pipy** is an excellent choice for a small stack and we plan to offer it as a bundle eventually.  **Nginx** works well when using the nginx-module-njs plugin available in most repos, and Apache can use it but has natural limitations in terms of connection capacity that make it less than ideal for a PoW gate.
 
 **Q:**  *"What browsers does this work best with?":*
 
