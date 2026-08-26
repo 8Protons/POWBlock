@@ -8,7 +8,7 @@ No fancy UI, no bloated framework, no exotic runtime, no massive dependency list
 
 > [!TIP]
 > ### 🚀 Getting Started
-> Ready to deploy? Download the latest release package from the menu on your right and:
+> Ready to deploy? [Download the latest release package](https://github.com/8Protons/POWBlock/releases) and:
 > **[Read the Quick Start Guide](https://github.com/8Protons/POWBlock/blob/main/docs/quickstart.md), [check out POWBlock tips and tricks](https://github.com/8Protons/POWBlock/blob/main/docs/tips_and_tricks.md), or [troubleshoot your POWBlock setup.](https://github.com/8Protons/POWBlock/blob/main/docs/troubleshooting.md)**
 
 
