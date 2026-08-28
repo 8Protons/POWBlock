@@ -57,4 +57,5 @@ COMMERCIAL/SHAREWARE Line
 1.8.3T "Asuka" - ASAN/gdb testbed deployed against ongoing large (~250kRPS) DDoS attacks for data gathering and debugging
 1.8.4J - Fixed several small memory and return value issues revealed by DDoS load
 1.8.5J - Upgraded EPOLL accept loop for atomicity, removed old send_response wrapper, hardened write cycle, and normalized all function returns
-1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption
+1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption  
+1.8.7J - Added arg-tunable limiter settings, fixed a flaw in the URL sanitizer, refactored the base64 payload parser for additional memory safety
