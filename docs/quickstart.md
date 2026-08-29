@@ -120,7 +120,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock186J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock187J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -141,48 +141,56 @@ If you want to go custom, read on below.
 #### Run Standalone with Defaults
 This is enough in ~80% of cases. It uses a POW difficulty of 20, listens on port 9001, sets a 13-hour token cookie expiry, 420s challenge time, requires no auth, uses SHA256 POW hash, and loads `powchallenge.html` from the working directory:
 ```bash
-./powblock186J-static
+./powblock187J-static
 ```
 
 #### Run with Flags
 Missing flags will automatically revert to default settings. Flag order does not matter:
 ```bash
-./powblock186J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
+./powblock187J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
 ```
 
 **Example Custom Execution:**
 ```bash
-./powblock186J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
+./powblock187J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
 ```
 
 **Get Help:**
 ```bash
-./powblock186J-static -h
+./powblock187J-static -h
 # OR
-./powblock186J-static --h
+./powblock187J-static --h
 # OR
-./powblock186J-static -help
+./powblock187J-static -help
+# OR
+./powblock187J-static --help
 ```
 
 ---
 
 ### Run Flags Reference
-
 | Flag | Description |
 | :--- | :--- |
-| `-help` / `-h` / `--h` | Displays a compact manual summarizing key points from the documentation. |
+| `-help` / `--help` / `-h` / `--h` | Displays a compact manual summarizing key points from the documentation. |
 | `-port` | The local port you want POWBlock to run on. **Default: `9001`** |
 | `-diff` | The number of leading 0 bits required for a proof of work to validate. 17 is low, 22 is very hard, min/max is 12/32. **Default: `20`** |
 | `-ctime` | The time in seconds that client connections can last and how much time each client gets to solve the proof of work. **Default: `420`** |
 | `-auth` | Your secret string that powblock checks to make sure traffic is coming from an authorized proxy. Proxy must send this key via the `X-PoW-ClientAuth` header per request. 8 chars minimum. *(Licensed POWBlock only)* |
 | `-hash` | Specify `256` or `512` to select SHA256 or SHA512 proof of work. **Default: `256`** |
 | `-cpage` | Takes an absolute path to a challenge page html file. **Default: looks for `powchallenge.html` in the active working directory** |
+| `-maxconns` | Max simultaneous global connections. **Default: `8192`** |
+| `-rlimit` | General request rate-limit count. **Default: `100`** |
+| `-rwindow` | General request rate-limit window in seconds. **Default: `120`** |
+| `-slimit` | Submission rate-limit count. **Default: `12`** |
+| `-swindow` | Submission rate-limit window in seconds. **Default: `300`** |
+| `-maxcli` | Max concurrent connections per client IP. **Default: `20`** |
+| `-tsize` | Tiny-read threshold in bytes. **Default: `17`** |
+| `-tmax` | Max consecutive tiny reads before drop. **Default: `60`** |
 | `-debug` | Enables very verbose debug logging to the console/syslog. |
-| `-fast` | Rejects clients that solve faster than [milliseconds] and logs a DROP. |
+| `-fast` | Rejects clients that solve faster than `[milliseconds]` and logs a DROP. **Default: off** |
 | `-loose` | Disables base64 format validation in the sanity checker and ignores the last IP octet when validating the IP bind between challenge and submission. *(Convenient for oddball browsers, private VPNs, TOR, etc.)* |
 | `-silent` | Disables all client-side error messages (429, 400, etc.) and forces silent drops on errors. |
-| `-license` | Accepts a 16+ char POWBlock license key that enables optional control headers. |
-
+| `-license` | Accepts a valid 16-digit POWBlock license key that enables optional control headers. |
 ---
 
 ## Part 4: Licensed versus Free
