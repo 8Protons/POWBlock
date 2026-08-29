@@ -75,6 +75,7 @@ COMMERCIAL/SHAREWARE Line
 1.8.4J - Fixed several small memory and return value issues revealed by DDoS load
 1.8.5J - Upgraded EPOLL accept loop for atomicity, removed old send_response wrapper, hardened write cycle, and normalized all function returns
 1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption
+1.8.7J - Added arg-tunable limiter settings, fixed a flaw in the URL sanitizer, refactored the base64 payload parser for additional memory safety
 
 -----------------------------
 Installation (assumes Debian-based, requires glibc 2.31+ and Linux Kernel 2.6.28+):
@@ -99,14 +100,14 @@ The challenge page "powchallenge.html" should be kept in the same directory as t
 Basic run commands:
 
 Run standalone with defaults (POW difficulty 20, listens on port 9001, 13 hour token cookie expiry, 420s challenge time, no auth required, SHA256 POW hash, loads powchallenge.html from same working directory - this is enough in ~80% of cases):
-./powblock186J-static
+./powblock187J-static
 
 Run with flags (missing flag = default setting, flag order doesn't matter):
-./powblock186J -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -fast [milliseconds] -loose -silent -license [key] -help
+./powblock187J -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -fast [milliseconds] -loose -silent -license [key] -help
 
-e.g. ./powblock186J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
+e.g. ./powblock187J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
 
-or ./powblock186J-static -h / --h / -help
+or ./powblock187J-static -h / --h / -help
 
 help:  Displays a compact manual summarizing key points from the documentation. Also triggered by -h/--h
 
@@ -132,6 +133,21 @@ silent:  Disables all client side error messages (429, 400, etc) and forces sile
 
 license:  Accepts a 16+ char POWBlock license key that enables the optional control headers
 
+Additionally, starting in version 1.8.7J, the system limiters became fully tunable via new startup args, with the old hardcoded values kept as defaults:
+
+-maxconns   [N]          Max simultaneous global connections (default 8192)
+
+-rlimit     [N]          General request rate limit count (default 100)
+-rwindow    [secs]       General request rate limit window (default 120)
+
+-slimit     [N]          Submission rate limit count (default 12)
+-swindow    [secs]       Submission rate limit window (default 300)
+
+-maxcli     [N]          Max concurrent connections per client IP (default 20)
+
+-tsize      [N]          Tiny-read threshold in bytes (default 17)
+-tmax       [N]          Max consecutive tiny reads before drop (default 60)
+
 Headache notes:
 - Your powchallenge.html javascript has to be correct for the type of hash. Either 256 and <32 or 512 and <64. If using the default challenge page, POWBlock will set the crypto params there automatically.
 - Not all legit clients can do SHA512 POW.  Most can, but you *will* see the rare case where a user just can't get in.
@@ -148,7 +164,7 @@ POWBlock is designed to run behind your existing reverse proxy as an alternate b
 2:  Compare strings, and direct traffic to different backends based on string matching
 3:  SHA-256 digest, MD5 crypto, or an equivalent basic hashing operation
 4:  Set and strip custom http headers
-Basically every reverse proxy can do these things, though you might need to install the appropriate plugins like libvmod-digest and vmod-standard for Varnish or use a small Lua script with Haproxy for example.
+Basically every reverse proxy can do these things, though you might need to install the appropriate plugins like nginx-module-njs for Nginx, libvmod-digest and vmod-standard for Varnish or use a small Lua script with Haproxy for example.
 
 The proxy server also needs to have a firewall like UFW that can restrict outsider access to POWBlock.  Direct access is an apocalyptic attack surface so secure it carefully in all cases.  Clients MUST reach POWBlock ONLY via the reverse proxy software.
 
@@ -276,13 +292,15 @@ POWBlock was designed foremost for simplicity and reliability. Single-threaded E
 
 POWBlock has two simple built-in rate limiters that allow 100 global requests/client/120s, and 12 PoW submissions/client/300s.  These limits are fairly high to accomodate users on shared IP addresses and to permit browser prefetch activity, but an ideal client should only require 2 requests (challenge GET + 302) and 1 submission GET per token.  Its other internal protections are thoughtful design that prevents common exhaustion vectors and memory/input overflows, good sanitization of data and client requests, a "safety first" fail-closed-on-client-error policy, an optional auth key to prevent unauthorized outside access, throttled logging to prevent CPU spin from log spamming, and a simple header/connection timeout/trickle tracker with a timed sweep that makes it resistant to Slowloris attacks.  For everything else it relies on the reverse proxy and server firewall.  It is critical that you isolate POWBlock from the open Internet, whether by IPTables or a simple firewall like UFW.  Clients must never be able to reach it directly, only via the reverse proxy.  Additionally using the proxy to rate limit clients both connecting to POWBlock (simple limit like 30requests/10 seconds to account for browser prefetching) and a much tighter limit on submissions (if url ~ ?powblock limit 2-4 per IP per minute) are solid security measures to prevent POWBlock from becoming a weak link in your website stack.
 
-Each single-threaded POWBlock can handle up to 8192 concurrent simultaneous connections, and past benchmarks on version 1.8.1 showed that it can process up to 9000 requests per second depending on your hardware, bandwidth, proxy capacity, and the types of requests coming in.  Submissions are the hot path as they invoke the URL checker/parser, the complex HMAC signature operator, and the encoding/decoding functions that use the most CPU.  Each POWBlock can process up to 2000 valid submissions per second before pegging a typical CPU core at 100%.  A sanity checker tries to detect invalid submissions early and dumps hostile clients without invoking the hot path, while the variable solve times inherent to PoW client operations introduces a natural jitter that mitigates the thundering herd.
+Each single-threaded POWBlock can handle 8192+ concurrent simultaneous connections, and past benchmarks on version 1.8.1 showed that it can process 9000+ requests per second depending on your hardware, bandwidth, proxy capacity, and the types of requests coming in.  Submissions are the hot path as they invoke the URL checker/parser, the complex HMAC signature operator, and the encoding/decoding functions that use the most CPU.  Each POWBlock can process 2000+ valid submissions per second before pegging a typical CPU core at 100%.  A sanity checker tries to detect invalid submissions early and dumps hostile clients without invoking the hot path, while the variable solve times inherent to PoW client operations introduces a natural jitter that mitigates the thundering herd. While we haven't benchmarked the newer 1.8.x series releases in the same way, our production stack has used a single POWBlock in combination with Haproxy to tank DDoS attacks as large as 250,000 requests per second with a budget 4-core VPS.
 
-POWBlock offers little defense against huge, volumetric DDoS attacks that rely on sapping your bandwidth to zero (pipe flood) to take you down, or those that are powerful and sudden enough to crash your proxy with pure traffic overload before POWBlock can come into play.  Only a proper CDN that can distribute the attack load over many network links is capable of absorbing these, so POWBlock doesn't replace the Cloudflares and Basedflares of the world in that respect.  Smaller DDoS attacks (common request floods, LOIC barrages, small to medium botnets) get bottlenecked by a good POWBlock configuration.  This cripples the attacker's ability to easily rotate his IP addresses and target URLs, meaning he can be boxed in and beaten at the network edge.
+POWBlock offers little defense against huge, volumetric DDoS attacks that rely on sapping your bandwidth to zero (pipe flood) to take you down, or those that are powerful and sudden enough to crash your proxy with pure traffic overload before POWBlock can come into play.  Only a proper CDN that can distribute the attack load over many network links is capable of absorbing these, so POWBlock doesn't replace the Cloudflares and Basedflares of the world in that respect.  Smaller DDoS attacks (common request floods, LOIC barrages, small to medium botnets) get bottlenecked by a good POWBlock configuration.  Because all requests, regardless of URL or client IP, have to pass through the controller's challenge logic, if you put a rate limiter right before the backend handoff it become impossible for attackers to avoid it. You can also use the POW_TOKEN cookie as a powerful trust signal, and shed unauthenticated clients at the edge when your stack is under severe attack.
 
 POWBlock is particularly good at stopping automated spam if your proxy is configured for it.  Use your proxy's logic to require a valid POW_TOKEN on all POST and PUT requests, and every python bot and script kiddie spamming blind posts at your API will be instantly blocked until they learn how to do proof-of-work.  Facilitating this was one of the reasons why POWBlock was designed to submit PoW solutions via GET with query params - a method normally considered archaic in 2024.
 
-Because POWBlock is a primitive, it can be incorporated into a server stack in a massive variety of ways.  Functionally no two mature websites using it will likely have exactly the same software stacks, security checks, issuance logic, or validation logic.  This means that there is no standardized attack surface for hostile clients to research and tune against.  Every website running it presents a unique challenge to every attacker.  Just remember that POWBlock is extremely powerful but relies on (you) being smart about how you use it.  There are no training wheels.
+Because POWBlock is a primitive, it can be incorporated into a server stack in a massive variety of ways.  Functionally no two mature websites using it will likely have exactly the same software stacks, security checks, issuance logic, or validation logic.  This means that there is no standardized attack surface for hostile clients to research and tune against.  Every website running it presents a unique challenge to every attacker. Just remember that POWBlock is extremely powerful but relies on (you) being smart about how you use it.  There are no training wheels.
+
+Lastly, POWBlock is tiny and boring on purpose. It is a single-threaded EPOLL server with no dynamic memory growth after startup, no keepalive, no complex parsers, no upstream libraries or supply-chain dependencies, and fixed-size buffers that fit in a CPU core’s hot path. Every allocation is hard-capped, every input is length-checked and rejected early, and the only cryptographic operations are standard HMAC-256 and SHA-256/512 for a straightforward leading-zero proof-of-work. The attack surface is measured in a few thousand lines of straightforward C99+GNU rather than a web framework or a multi-threaded runtime. There is very little uncontrolled code that could ever hide a surprise. Our background goal was to create it in such a way that it would look perfectly normal sitting alongside netcat, telnet, or any of the thousand other boring-but-performant network primitives.
 
 -----------------------------
 Advanced POWBlock:  Banning
@@ -313,7 +331,7 @@ journalmatch = _SYSTEMD_UNIT=powblock@*.service
 
 # If using POWBlock inside a systemd nspawn container run fail2ban on the host server and do
 # sudo journalctl -M CONTAINERNAME -u 'powblock@*.service' -n 5 -o json-pretty
-# to get the MACHINE ID and then use your MACHINE ID like this:
+# to get the MACHINE ID from the output and then use your MACHINE ID like this:
 # journalmatch = _MACHINE_ID=016c82e2120b4c02a713b39c83985654 + _SYSTEMD_UNIT=powblock@*.service
 
 # Ban criteria:  DROPs in WINDOW triggers ban for TIME ignoring SELF and bans perform DEFAULT ACTION (usually IPtables ban)
@@ -329,12 +347,12 @@ action = %(action_)s
 -----------------------------
 Advanced POWBlock:  Distributed Networks
 
-If your website uses a number of frontends (for example, multiple reverse proxies on round-robin DNS all serving a single origin) POWBlock can accommodate this easily.  Since POWBlock is completely stateless there is no concern with shared state across multiple frontend servers.  The only thing required is that each server uses an identical configuration for the POW issuance/validation logic and an identical X-PoW-Secret key.  Then it doesn't matter which server a client accesses - the tokens and validation will always be the same, and a client passing POWBlock on any connection is instantly recognized by all the other frontends.
+If your website uses a number of frontends (for example, multiple reverse proxies on round-robin DNS all serving a single origin) POWBlock can accommodate this easily.  Since POWBlock is completely stateless there is no concern with shared state across multiple frontend servers.  The only thing required is that each server uses an identical configuration for the POW issuance/validation logic and an identical X-PoW-Secret key.  Then it doesn't matter which server a client accesses - the tokens and validation will always be the same, and a client passing POWBlock on any connection is instantly recognized by all the other frontends. POWBlock uses the same shared secret for client hashing and the internal HMAC signature on every instance, and so the shared secret makes network distribution trivial.
 
 -----------------------------
 Advanced POWBlock:  Scaling
 
-POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.  The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.  So a 4 core machine does best with 1-3 POWBlocks, leaving at least one core as a failover for other software in case of heavy attack load.  Up to [cores] POWBlock instances can be ran on a large, dedicated server, but more than 25 begins to see diminishing returns due to kernel overhead.  A 16 core, 128GB Enterprise server with 15 POWBlocks should comfortably handle 100,000+ requests per second from tens of thousands of IPs, and clustering such servers via round-robin is also fully supported.  
+POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.  The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.  So a 4 core machine does best with 1-3 POWBlocks, leaving at least one core as a failover for other software in case of heavy attack load.  Up to [cores] POWBlock instances can be ran on a large, dedicated server, but more than 25 begins to see diminishing returns due to kernel overhead.  A 16 core, 128GB Enterprise server with 15 POWBlocks should comfortably handle 150,000+ requests per second from scores of thousands of IPs, and clustering such servers via round-robin is also fully supported.  
 
 Example systemd template name:  powblock@.service
 
@@ -344,7 +362,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock186J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock187J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -401,12 +419,15 @@ Tips, Tricks, Quirks, and Notes:
 - If you'd like a dedicated POWBlock logfile instead of logging to the system journal, you can add:
 StandardError=append:/path/to/log/dir/powblock.log
 to the systemd template right below EXECSTART.
+- If you can't pay for a license but *really* need dynamic difficulty, just run another POWBlock with a separate startup config and use it as an "easy mode" backend.
 
 -POWBlock intentionally separates the client's cookie values from anything going on inside its own process, and leaves them up to the proxy. This gives the admin the freedom to use *anything* as the token value, while leaving POWBlock free to cleanly IP bind and time limit challenges and submissions. Hash(clientIP+Secret) is just our recommended practice for the POW_TOKEN. You can use any kind of deterministic client value or hash you want as long as you keep X-PoW-Expected to <64 printable bytes. Hack away.
 
 -POWBlock doesn't have or need a configuration file like most programs do, because with a paid license the proxy can configure it on the fly.  Your proxy configuration becomes POWBlock's config file, and all the basic configs are handled via startup args in the free version.
 
 -The proxy logic can be as simple as the example in this document, or as atrociously complicated as the 500+ line VCL controller that the authors use on our production servers. A really good controller is just as much of a technical marvel as POWBlock itself, especially with a license that unlocks all of the granular control headers.
+
+- POWBlock gets much of its performance and security from the KISS principle. No threads, no keepalive, no dynamic growth. Small fixed buffers and a structural size deliberately chosen to sit in the hot path of a modern CPU core and run as fast as the hardware will allow. We almost never touch the heap - and in the two places we do, the allocations are hard-capped, short lived, and surrounded by safety checks.
 
 -----------------------------
 Troubleshooting:
@@ -425,13 +446,15 @@ Alternatively you might have your remote, HTTPS protected POW server *not* set a
 POWBlock 1.8.x Series "Jehuty" Limits
 ================================================================
 
-- Maximum concurrent connections : 8192     (hard cap)
-- Max connections per single IP  : 20       (hard cap)
+- Maximum concurrent connections : 8192
+- Max connections per single IP  : 20
 - Request rate limit             : 100/120s total, 12/300s submissions (per IP, sliding window)
 - Slowloris / header timeout     : 30 seconds
 - Default connection lifetime    : 420 seconds (-ctime flag)
 - Connection sweep runs every    : 20 seconds (zombie & timeout cleanup)
 - Trickle protection             : drops after 60 reads < 17 bytes
+
+SOME LIMITS CAN BE ADJUSTED SINCE 1.8.7J - SEE THE STARTUP ARG SECTION
 ================================================================
 
 -----------------------------
@@ -538,10 +561,10 @@ Cookie setting behavior:
 
 Performance & DoS resistance invariants:
 
-- Max concurrent connections hard-capped at 8192 per instance (compile-time constant).
-- Clients are rate limited to 100 requests per 120s per IP and 12 PoW submissions per 300s per IP, as tracked in a 524288 byte hash table with linear probing.
+- Max concurrent connections default-capped at 8192 per instance.
+- Clients are rate limited to 100 requests per 120s per IP and 12 PoW submissions per 300s per IP, as tracked in a 524288 block hash table with linear probing.
 - Probe depth is 256 and expired entries are tombstoned for reuse.
-- Max connections from a single client IP are hard capped at 20 and tracked in the rate limiting hash table. Extras are dropped and logged.
+- Max connections from a single client IP are default-capped at 20 and tracked in the rate limiting hash table. Extras are dropped and logged.
 - A "trickle detector" counts data flows from clients that are <17 bytes and increments a counter. After 60 sequential trickles the connection is dropped.
 - Protection against slow clients relies on HEADER_TIMEOUT (30s inactivity on headers) + per-connection lifetime timeout (CTime).
 - Accept loop drains the listen queue until EAGAIN (no artificial per-cycle limit).
@@ -549,6 +572,7 @@ Performance & DoS resistance invariants:
 - Active_conns are swept every 20s via walking a linked list, with connections older than ctime being closed and freed regardless of status.
 - A memory probe sweeps the hash table every 5 minutes and clears any entries that are older than 1 hour, preventing table exhaustion.
 - Attack log prints are throttled to prevent CPU pegging attacks by log spamming.
+- The rate limiters, max connections, and trickle detection are adjustable via startup args since 1.8.7J.
 
 Logging invariants:
 
@@ -559,7 +583,7 @@ Logging invariants:
 POWBlock Standard Log Messages Reference
 ================================
 Startup / Info Logs:
-=== POWBlock v1.8.6 'Jehuty' Started ===
+=== POWBlock v1.8.7 'Jehuty' Started ===
 Port               : %d
 Difficulty         : %d bits
 Connection Timeout : %d seconds (CTime)
@@ -614,6 +638,7 @@ Logs that require -debug:
 [POWBLOCK] DEBUG: Entropy failure in challenge from %s
 [POWBLOCK] getrandom failed, using /dev/urandom fallback
 [POWBLOCK] All entropy sources failed for %zu bytes
+
 Dumps raw and normalized headers (comparison/parser debugging)
 
 
@@ -631,7 +656,7 @@ These choices prioritize simplicity, predictability, and safety under attack ove
 =====================================
 POWBlock 1.8x Series - API Specification
 
-Version: 1.8.6J "Jehuty"
+Version: 1.8.7J "Jehuty"
 Type:   Header-driven Proof-of-Work Microservice
 Date:   April 2026
 
@@ -700,5 +725,4 @@ Security Requirements (Mandatory)
 - POWBlock must never be directly reachable from the public internet.
 - Use X-PoW-ClientAuth when exposing to remote proxies.
 ================================================================
-This specification is valid for POWBlock 1.8.6J "Jehuty" and newer.
-
+This specification is valid for POWBlock 1.8.7J "Jehuty" and newer.
