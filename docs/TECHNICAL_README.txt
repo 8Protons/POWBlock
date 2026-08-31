@@ -427,7 +427,7 @@ to the systemd template right below EXECSTART.
 
 -The proxy logic can be as simple as the example in this document, or as atrociously complicated as the 500+ line VCL controller that the authors use on our production servers. A really good controller is just as much of a technical marvel as POWBlock itself, especially with a license that unlocks all of the granular control headers.
 
-- POWBlock gets much of its performance and security from the KISS principle. No threads, no keepalive, no dynamic growth. Small fixed buffers and a structural size deliberately chosen to sit in the hot path of a modern CPU core and run as fast as the hardware will allow. We almost never touch the heap - and in the two places we do, the allocations are hard-capped, short lived, and surrounded by safety checks.
+-POWBlock gets much of its performance and security from the KISS principle. No threads, no keepalive, no dynamic growth. Small fixed buffers and a structural size deliberately chosen to sit in the hot path of a modern CPU core and run as fast as the hardware will allow. We almost never touch the heap - and in the two places we do, the allocations are hard-capped, short lived, and surrounded by safety checks.
 
 -----------------------------
 Troubleshooting:
