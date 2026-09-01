@@ -57,7 +57,7 @@ Our largest production server has used a POWBlock stack since early 2025.  Hapro
 
 **Q:**  *"How do you get that kind of performance?"*
 
-By designing POWBlock from day one to be hardware optimized. The static binary is small enough that its entire workspace can fit comfortably inside a modern CPU's L3 cache, and the fixed buffers that it uses for I/O operations are sized to ensure that all of its process data fits within single kernel calls and message packets. The result is blistering speed with zero fragmentation, where POWBlock under load can nestle itself into the CPU and process clients almost as fast as the kernel can hand them over. The ability to do this was a major reason we stuck with C long-term instead of scaling out into a larger framework. POWBlock is tiny, and we used that same size limitation to make it stronger.
+By designing POWBlock from day one to be hardware optimized. In addition to being completely lockless and stateless, the static binary is small enough that its entire workspace can fit comfortably inside a modern CPU's L3 cache, and the fixed buffers that it uses for I/O operations are sized to ensure that all of its process data fits within single kernel calls and message packets. The result is blistering speed with zero fragmentation, where POWBlock under load can nestle itself into the CPU and process clients almost as fast as the kernel can hand them over. The ability to do this was a major reason we stuck with C long-term instead of scaling out into a larger framework. POWBlock is tiny, and we used that same size limitation to make it stronger.
 
 **Q:**  *"Is this vibe coded slopware?"*
 
