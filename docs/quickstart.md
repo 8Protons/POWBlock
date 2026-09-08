@@ -120,7 +120,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock187J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock188J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -141,29 +141,29 @@ If you want to go custom, read on below.
 #### Run Standalone with Defaults
 This is enough in ~80% of cases. It uses a POW difficulty of 20, listens on port 9001, sets a 13-hour token cookie expiry, 420s challenge time, requires no auth, uses SHA256 POW hash, and loads `powchallenge.html` from the working directory:
 ```bash
-./powblock187J-static
+./powblock188J-static
 ```
 
 #### Run with Flags
 Missing flags will automatically revert to default settings. Flag order does not matter:
 ```bash
-./powblock187J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
+./powblock188J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
 ```
 
 **Example Custom Execution:**
 ```bash
-./powblock187J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
+./powblock188J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
 ```
 
 **Get Help:**
 ```bash
-./powblock187J-static -h
+./powblock188J-static -h
 # OR
-./powblock187J-static --h
+./powblock188J-static --h
 # OR
-./powblock187J-static -help
+./powblock188J-static -help
 # OR
-./powblock187J-static --help
+./powblock188J-static --help
 ```
 
 ---
@@ -186,6 +186,7 @@ Missing flags will automatically revert to default settings. Flag order does not
 | `-maxcli` | Max concurrent connections per client IP. **Default: `20`** |
 | `-tsize` | Tiny-read threshold in bytes. **Default: `17`** |
 | `-tmax` | Max consecutive tiny reads before drop. **Default: `60`** |
+| `-log` | Minimum delay in seconds (0-5) between attack log prints. **Default: `2`** |
 | `-debug` | Enables very verbose debug logging to the console/syslog. |
 | `-fast` | Rejects clients that solve faster than `[milliseconds]` and logs a DROP. **Default: off** |
 | `-loose` | Disables base64 format validation in the sanity checker and ignores the last IP octet when validating the IP bind between challenge and submission. *(Convenient for oddball browsers, private VPNs, TOR, etc.)* |
