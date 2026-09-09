@@ -94,6 +94,14 @@ checkHost = powblock.com      ; verify hostname matches cert
 
 ---
 
+## Advanced POWBlock:  Cloudflare and Other CDNs
+
+POWBlock is completely ignorant of CDN logic because it is designed to run as a backend.  This means that your reverse proxy or server is *already connected to the CDN* and that TLS termination, origin certs, and caching/security settings are already in place where they belong.  POWBlock does not need to interact with any of that logic.  All that is required is to make sure that you are taking the client's canonical IP address from the CDN (e.g. from the CF-Connecting-IP header if using Cloudflare) and passing it along in POWBlock's X-Client-IP header.  
+
+POWBlock's own anti-caching headers ensure that its responses should not be cached by a CDN, and POWBlock is also designed to stack neatly with typical CDN DDoS checks and bot guards, including other proof-of-work systems like Cloudflare Turnstile or Basedflare Bot Check.  Generally speaking, once you make sure the correct, normalized client IP is being passed to it, POWBlock will support almost any CDN transparently and without further adjustments.  Because such CDNs often rely on weak "heuristics" and reputational checks that don't issue hard challenges, they tend to allow a large number of stealthier bots right through to your website, and so we recommend running POWBlock in addition to using your CDN so you can clean up these leftover bots as well.
+
+---
+
 ## Advanced POWBlock: TOR Onion POW
 
 POWBlock is fully compatible with Tor traffic provided your hidden service and proxy are configured properly.  By adding the setting:
