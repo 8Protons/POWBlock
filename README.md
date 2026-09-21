@@ -53,6 +53,11 @@ POWBlock is ~1/60th the size of Anubis, has ~7x higher performance on an 8-core 
 
 ![powblock stack](https://github.com/8Protons/POWBlock/blob/main/docs/powblockstackchart.png)
 
+
+**Q:**  *"But what about shared metrics, ASN lookups, user-agent checks, honeypots and all the extra fancy stuff?":*
+
+You do them in the proxy where they belong.  POWBlock accepts *data that the proxy already has*, and returns enough data for requests and clients to be fully analyzed and tracked at the proxy layer.  Using POWBlock doesn't mean that you lost any capability in how you monitor and run your network, all it means is that the capability remains in the hands of your proxy or server and can be tallied and accessed from there. Which is right where it should be - "general purpose" servers and proxies are general purpose for a reason.  Those kinds of operations are what they are meant to do best.
+
 **Q:**  *"Is this all just theory and hype or has this thing seen real use?"*
 
 Our largest production server has used a POWBlock stack since early 2025.  Haproxy sits out front handling TLS termination and edge rate limiting, FOSS Varnish Cache sits behind Haproxy doing our caching/routing and running a POWBlock controller written in VCL.  A single POWBlock runs behind Varnish.  Three of these stacks are the forward nodes of a roundrobin DNS network serving a single origin that gets ~1.1 million visitors and over 1 billion requests per month.  POWBlock has stopped more than 99% of all automated spam and has successfully held off request-flood DDoS attacks as large as 250,000 RPS without needing to scale.  It has been targeted with tuned traffic, hack attacks, buffer overflows, ASIC PoW cracker bots, and worse.  And it lowered our bandwidth use by nearly 35% due to blocking so many scraper bots.  We're only doing a public release *because* it has proven itself so well and development will continue as any new issues are discovered.
