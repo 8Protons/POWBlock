@@ -43,6 +43,11 @@ Basically every reverse proxy can do these things, though you might need to inst
 
 Pretty much any browser newer than ~2014.  The default 'powchallenge.html' included with the program was developed for wide compatibility by making sure that **Pale Moon**, **Tor Browser** (on defaults) and **Cromite** were fully supported in addition to the usual **Chrome/Firefox/Brave/Opera/Safari** browser package.  Additionally, if you're using something really strange, the POWBlock server has a **-loose** mode that relaxes compatibility even more, at the cost of a small degree of security.  
 
+
+**Q:**  *"How does your versioning work?":*
+
+The first number in the version ID represents the *family.*  v1.xx is Pure Stateless, v2.xx was Stateful (token registry), and v3.xx are experimental POWBlocks using memory-hard proof-of-work schemes.  The second digit represents the *engine iteration.*  If anything causes significant changes or refactoring of the core EPOLL state machine, the second digit gets a bump, e.g. 1.7.16 became 1.8.0 when the engine was modified to ditch OpenSSL.  The third digit x.x.1 is for all refactors and changes that do not affect the core.  There's also an optional 4th digit (e.g. v1.8.8.1) that would be used in the event of emergency hotfix releases, if such is ever required.
+
 **Q:**  *"Proof-of-Work isn't even hard, why bother with this?":*
 
 PoW isn't hard in concept but neither is sending an email or editing some text.  The devil is in the details - implementation, security, performance, modularity, separations of concerns and ease of use.  Using POWBlock takes all of the guesswork and "site-specific toy" aspects out of the PoW concept entirely.  Its a tiny, torture-tested, composable daemon that does all of the heavy lifting for you while still letting you own the stack.  Instead of writing/testing/debugging a hand-rolled PoW scheme in your stack's custom lang that takes resources from your backend, only works on your website, and breaks with every other update, you can use one tiny program that works anywhere without fuss and have it take the bullet for your backend if you come under attack.
