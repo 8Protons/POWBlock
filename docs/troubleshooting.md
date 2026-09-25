@@ -19,7 +19,6 @@ This document expands on the Troubleshooting section of the Technical README.
 3. Can the reverse proxy reach that port? (firewall / UFW / iptables / security groups)
 4. If using `-auth`, is the proxy sending a matching `X-PoW-ClientAuth` header?
 5. Did bind fail because the port is privileged (<1024) and the process is not root?
-6. If POWBlock failed silently, the port might be in use by another program.
 
 **Notes**
 - Restricted ports require root or capabilities; prefer a high port (default 9001).
@@ -54,7 +53,7 @@ Some clients percent-encode parts of `pbchal`, alter query order, or inject extr
 ### 5. Client IP changed between challenge and submit
 PoW challenges are IP-bound between issuance and submission. Carrier-grade NAT, mobile handoffs, or some VPNs can change the visible IP mid-solve → `ip_mismatch` drop.
 
-**Fix:** Try `-loose` for diagnosis (ignores the last IP octet changing) and consult your VPN rules and privacy software, or consult your network administrator. Most often this is a rare occurrence of bad luck, as most IPs are stable enough for the duration of the challenge window. Trying again by refreshing will very likely go through.
+**Fix:** Try `-loose` for diagnosis (ignores the last IP octet changing) and consult your VPN rules and privacy software, or consult your network administrator. Most often this is a rare occurrence of bad luck, as most IPs are stable enough for the duration of the challenge window. A quick tap of the Retry button will almost certainly go through.
 
 ### 6. Not on HTTPS
 The default challenge page uses `crypto.subtle.digest`, which browsers only expose in secure contexts.
@@ -74,7 +73,7 @@ POWBlock does **not** decide when a challenge is required. The proxy does, by co
 - Cookie domain wrong when using `X-PoW-HostDomain`
 
 **Fingerprint alternative**
-Instead of hashing IP + secret, hash a device/TLS fingerprint + secret. JA3N / JA4-style prints are common choices.
+Instead of hashing IP + secret, hash a device/TLS fingerprint + secret. JA3N / JA4-style prints are common choices. If using FOSS TLS termination like Haproxy+OXL, you will need to disable TLS session tickets and REGEX trim out the HTTP version to get a stable print.
 
 **HTTP/3 caveat**
 With HTTP/3 enabled, TLS fingerprints can be non-deterministic (HTTP/2 vs HTTP/3 path). If fingerprints flap, lock the edge to HTTP/2 (ALPN) or HTTP/1.1 for consistency.
@@ -130,6 +129,7 @@ Polling walks the rate table and is relatively expensive; do not hit it at high 
 | Per-IP conn drops | Too many concurrent conns from one IP |
 | Bogey / fast mover | Solved faster than `-fast` allows |
 
+Since v1.8.9J these include the IP address of the proxy that forwarded them, to aid in spotting a malfunctioning node in a remote POW setup.
 Tune with: `-rlimit`, `-rwindow`, `-slimit`, `-swindow`, `-maxcli`, `-tsize`, `-tmax`, `-ctime`, `-fast`.
 
 ---
