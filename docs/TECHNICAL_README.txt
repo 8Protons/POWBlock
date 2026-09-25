@@ -77,6 +77,7 @@ COMMERCIAL/SHAREWARE Line
 1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption
 1.8.7J - Added arg-tunable limiter settings, fixed a flaw in the URL sanitizer, refactored the base64 payload parser for additional memory safety
 1.8.8J - Added moderate bugfixes to 1.8.7 after code review, plus arg-tunable log throttling, additional error prints, and capped cpage size to 10kB at startup
+1.8.9J - Added Retry button to client error messages, -secure arg for secure cookies, and refactored logging to show remote proxy IP
 
 -----------------------------
 Installation (assumes Debian-based, requires glibc 2.31+ and Linux Kernel 2.6.28+):
@@ -101,14 +102,14 @@ The challenge page "powchallenge.html" should be kept in the same directory as t
 Basic run commands:
 
 Run standalone with defaults (POW difficulty 20, listens on port 9001, 13 hour token cookie expiry, 420s challenge time, no auth required, SHA256 POW hash, loads powchallenge.html from same working directory - this is enough in ~80% of cases):
-./powblock188J-static
+./powblock189J-static
 
 Run with flags (missing flag = default setting, flag order doesn't matter):
 ./powblock187J -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -fast [milliseconds] -loose -silent -license [key] -help
 
-e.g. ./powblock188J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
+e.g. ./powblock189J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
 
-or ./powblock188J-static -h / --h / -help / --help
+or ./powblock189J-static -h / --h / -help / --help
 
 help:  Displays a compact manual summarizing key points from the documentation. Also triggered by -h/--h/--help
 
@@ -131,6 +132,8 @@ fast:  Sets a speed limit (milliseconds) that rejects a client if they solve too
 loose: Disables the base64 format validation in the sanity checker, and ignores the last IP octet when validating the IP bind between challenge and submission.  (Convenient for some oddball browsers/apps, private VPNs, TOR, etc that might mangle valid token encoding or hop the last octet per-request)
 
 silent:  Disables all client side error messages (429, 400, etc) and forces silent drops on errors
+
+secure:  Sets the Secure flag on both the POW_TOKEN and POW_ID cookies
 
 license:  Accepts a 16+ char POWBlock license key that enables the optional control headers
 
@@ -366,7 +369,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock188J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock189J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -445,9 +448,19 @@ Troubleshooting:
 
 POWBlock doesn't appear at all - check your firewall and auth keys and make sure it can still be accessed by the reverse proxy, make sure POWBlock itself is running and doublecheck your port. If it failed to bind you're likely using a restricted port, so switch to a higher port or run as root (not suggested). If you're sure the port and firewall are correct, double check your proxy config and make sure its actually sending traffic there.
 
-POWBlock appears but spins forever and never completes - A few things can cause this.  1:  You look like a bot.  Some browser plugins can guard your privacy so strictly they fool the JS detector code in the default powchallenge.html page into thinking you're a bot, and so it passes you the challenge and then silently hangs up on you.  Disable your plugins / Brave shields etc and try again.  2:  The X-Original-URL header is not being passed by your proxy.  POWBlock requires its value to complete the 302+set-cookie cycle, and if its missing or malformed then the challenge page may keep reloading back to itself, leaving you stuck.  If none of these apply, consider that the difficulty might be set too high or else the device is very slow at crunching proof-of-work, like an older phone.  Consider lowering the difficulty and/or increasing the CTime and testing again.  There is a hard cap (CTime) on how long a user can attempt to solve a challenge, and if they're taking longer than that it will never complete.  3:  Your browser is mangling the POW submission, such as by %encoding characters in the pbchal string, or padding the request with extra bytes that are being injected into the parser.  Try a different browser or try running POWBlock in -loose mode to test.  4:  Some factor is causing your IP address to change between requesting the challenge and submitting the POW answer.  Try a different browser or try running POWBlock in -loose mode to test, or consult your network administrator.  5:  The client isn't connecting over HTTPS.  The default powchallenge.html page relies on subtle.digest crypto, which browsers cannot run over plain HTTP.
+POWBlock appears but spins forever and never completes - A few things can cause this.  
 
-POWBlock seems to work fine but users get too many challenges - This is caused by whatever logic you implemented in your proxy to determine token validity.  POWBlock itself doesn't decide when valid challenges happen.  Inspect your proxy config. In the classical setup the tokens are bound to the client IP address, so users whose IPs change very often (some mobile carriers) will hit POWBlock much more frequently.  For such cases you may wish to use your proxy to pass device fingerprints in a header and hash that with the secret instead of their IP. If you take this approach we suggest using the vanilla JA4 or JA3N TLS fingerprints, but be aware that if your web stack supports HTTP/3 then TLS fingerprints become non-deterministic since the same client will have different prints depending on whether the HTTP/3 or HTTP/2 connection completes first, and this can change from request to request.  If you find yourself in this boat we suggest locking your proxy to only HTTP/2 traffic via ALPN, or even HTTP1.1 if you don't need the fancy features.  Other factors related to your stack or the client's browser behaviour may also cause fingerprints to change, so be aware.
+1:  You look like a bot.  Some browser plugins can guard your privacy so strictly they fool the JS detector code in the default powchallenge.html page into thinking you're a bot, and so it passes you the challenge and then silently hangs up on you.  Disable your plugins / Brave shields etc and try again.  
+
+2:  The X-Original-URL header is not being passed by your proxy.  POWBlock requires its value to complete the 302+set-cookie cycle, and if its missing or malformed then the challenge page may keep reloading back to itself, leaving you stuck.  If none of these apply, consider that the difficulty might be set too high or else the device is very slow at crunching proof-of-work, like an older phone.  Consider lowering the difficulty and/or increasing the CTime and testing again.  There is a hard cap (CTime) on how long a user can attempt to solve a challenge, and if they're taking longer than that it will never complete.  
+
+3:  Your browser is mangling the POW submission, such as by %encoding characters in the pbchal string, or padding the request with extra bytes that are being injected into the parser.  Try a different browser or try running POWBlock in -loose mode to test.  
+
+4:  Some factor is causing your IP address to change between requesting the challenge and submitting the POW answer.  Try a different browser or try running POWBlock in -loose mode to test, or consult your network administrator.  
+
+5:  The client isn't connecting over HTTPS.  The default powchallenge.html page relies on crypto.subtle, which browsers cannot run over plain HTTP.
+
+POWBlock seems to work fine but users get too many challenges - This is caused by whatever logic you implemented in your proxy to determine token validity.  POWBlock itself doesn't decide when valid challenges happen.  Inspect your proxy config. In the classical setup the tokens are bound to the client IP address, so users whose IPs change very often (some mobile carriers) will hit POWBlock much more frequently.  For such cases you may wish to use your proxy to pass device fingerprints in a header and hash that with the secret instead of their IP. If you take this approach we suggest using the vanilla JA4 or JA3N TLS fingerprints, but be aware that if your web stack supports HTTP/3 then TLS fingerprints become non-deterministic since the same client will have different prints depending on whether they're establishing or renewing a TLS session, and whether the HTTP/3 or HTTP/2 connection completes first, and this can change from request to request.  If you find yourself in this boat we suggest disabling TLS session cookies and locking your proxy to only HTTP/2 traffic via ALPN, or even HTTP1.1 if you don't need the fancy features.  Other factors related to your stack or the client's browser behaviour may also cause fingerprints to change, so be aware.
 
 The domain set by X-PoW-HostDomain isn't working correctly - POWBlock validates the domain to RFC2965 for maximum compatibility. It begins with a leading dot:
 Valid:  .example.com (scopes example.com and all subdomains of it including www)	.subdomain.example.com (scopes only to this subdomain)
@@ -589,6 +602,7 @@ Logging invariants:
 
 - All logs use fprintf(stderr) and DROP logs are individually throttled to print no more than once every -log seconds.
 - Attack-relevant (DROP) logs all follow the pattern "[POWBLOCK] DROP ... from IP ..." to facilitate easy Fail2ban parsing.
+- Since v1.8.9, several logs prepend the IP address of the proxy that forwarded the request, to aid in network debugging.
 - Log entries and messages are the following list (some require -debug mode):
 
 POWBlock Standard Log Messages Reference
@@ -597,7 +611,7 @@ Startup / Info Logs:
 Failed to create socket
 Failed to bind. Is the port restricted/too low a number? (permission denied), or in use by something else?: (perror)
 Failed to put socket into listening mode
-=== POWBlock v1.8.8 'Jehuty' Started ===
+=== POWBlock v1.8.9 'Jehuty' Started ===
 Port               : %d
 Difficulty         : %d bits
 Connection Timeout : %d seconds (CTime)
@@ -631,6 +645,7 @@ DROP/Security Logs:
 [POWBLOCK] DROP BogeyFastMover %ld ms vs %d from %s
 [POWBLOCK] DROP MismatchIP token %s vs current %s%s from %s
 [POWBLOCK] DROP ChallengeExpired ts %ld vs now %ld timeout %d from %s
+[POWBLOCK] DROP AuthFailed from %s
 
 Other Operational Logs:
 [POWBLOCK] accept4 failed: %s
@@ -655,7 +670,7 @@ Logs that require -debug:
 [POWBLOCK] getrandom failed, using /dev/urandom fallback
 [POWBLOCK] All entropy sources failed for %zu bytes
 
-Dumps raw and normalized headers (comparison/parser debugging)
+Dumps raw and normalized headers (comparison/parser/peer debugging)
 
 
 ================================
@@ -672,7 +687,7 @@ These choices prioritize simplicity, predictability, and safety under attack ove
 =====================================
 POWBlock 1.8x Series - API Specification
 
-Version: 1.8.8J "Jehuty"
+Version: 1.8.9J "Jehuty"
 Type:   Header-driven Proof-of-Work Microservice
 Date:   April 2026
 
@@ -741,4 +756,4 @@ Security Requirements (Mandatory)
 - POWBlock must never be directly reachable from the public internet.
 - Use X-PoW-ClientAuth when exposing to remote proxies.
 ================================================================
-This specification is valid for POWBlock 1.8.8J "Jehuty" and newer.
+This specification is valid for POWBlock 1.8.9J "Jehuty" and newer.
