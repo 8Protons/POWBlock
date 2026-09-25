@@ -578,7 +578,7 @@ HMAC signature invariants:
 Cookie setting behavior:
 
 - POW_TOKEN and POW_ID are always HttpOnly + SameSite=Lax.
-- Secure flag is never set by POWBlock - TLS termination and Secure cookies must be handled by the proxy.
+- Secure flag is optional, and set by the -secure startup arg.
 - Max-Age is taken from header if provided (X-PoW-TokenExpires / X-PoW-IDExpires), else defaults to 46800s (~13 hours).
 - Path=/ - fixed (cannot be overridden).
 - Domain= is optional and set by the X-PoW-HostDomain header when available (default is the current domain from the browser request if POWBlock is running locally)
