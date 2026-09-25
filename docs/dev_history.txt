@@ -60,3 +60,4 @@ COMMERCIAL/SHAREWARE Line
 1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption  
 1.8.7J - Added arg-tunable limiter settings, fixed a flaw in the URL sanitizer, refactored the base64 payload parser for additional memory safety
 1.8.8J - Fixed several small issues revealed by third-party code review, added adjustable log throttles, perror prints at startup, and hard-capped the cpage size to the recommended 10kB
+1.8.9J - Added Retry button to client error messages, -secure arg for secure cookies, and refactored logging to show remote proxy IP
