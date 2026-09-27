@@ -1,153 +1,128 @@
-/**
- * POWBlock - basic njs controller (Nginx)
- * =========================================
- * Mirrors the minimal Varnish VCL controller:
- *   - Strip/ignore client-supplied PoW headers (never trust them)
- *   - X-Client-IP, X-PoW-Secret, X-PoW-Expected, X-Original-URL
- *   - SHA256(client_ip + secret) vs POW_TOKEN cookie
- *   - Invalid = powblock upstream; valid = origin
- *   - POST without valid token = 403
- *
- * Requires: nginx compiled/loaded with njs (nginx-module-njs)
- *
- * ---- Required nginx config (paste into a server block) ----
- *
- * js_import pow from /etc/nginx/njs/powblock.js;
- *
- * js_set $pow_ok        pow.ok;
- * js_set $pow_expected  pow.expected;
- * js_set $pow_client_ip pow.client_ip;
- *
- * upstream origin {
- *     server 127.0.0.1:8080;   # your app
- * }
- *
- * upstream powblock {
- *     server 127.0.0.1:9001;   # POWBlock listen port
- * }
- *
- * map $pow_ok $pow_backend {
- *     1       http://origin;
- *     default http://powblock;
- * }
- *
- * # Only send control headers to POWBlock; blank toward origin
- * map $pow_ok $pow_secret_hdr {
- *     1       "";
- *     default "xxxyyyzzz123123aaaaaaaaaaaaabbbbbbbbbbbbbbbbb0000000000000000";
- * }
- *
- * map $pow_ok $pow_expected_hdr {
- *     1       "";
- *     default $pow_expected;
- * }
- *
- * map $pow_ok $pow_orig_url_hdr {
- *     1       "";
- *     default $request_uri;
- * }
- *
- * map $pow_ok$request_method $pow_deny_post {
- *     default 0;
- *     0POST   1;
- * }
- *
- * server {
- *     listen 443 ssl;
- *     # ssl_certificate     /path/to/fullchain.pem;
- *     # ssl_certificate_key /path/to/privkey.pem;
- *
- *     location / {
- *         if ($pow_deny_post = 1) {
- *             return 403;
- *         }
- *
- *         proxy_set_header Host              $host;
- *         proxy_set_header X-Forwarded-For   $pow_client_ip;
- *         proxy_set_header X-Client-IP       $pow_client_ip;
- *         proxy_set_header X-PoW-Secret      $pow_secret_hdr;
- *         proxy_set_header X-PoW-Expected    $pow_expected_hdr;
- *         proxy_set_header X-Original-URL    $pow_orig_url_hdr;
- *
- *         # Do not pass through any client-supplied PoW headers
- *         proxy_set_header X-PoW-Token       "";
- *         proxy_set_header X-PoW-Difficulty  "";
- *         proxy_set_header X-PoW-CTime       "";
- *         proxy_set_header X-PoW-ClientAuth  "";
- *
- *         proxy_pass $pow_backend;
- *     }
- * }
- *
- * IMPORTANT:
- *   - SECRET below MUST match the default value in map $pow_secret_hdr
- *   - Change both before production
- *   - Firewall POWBlock so only nginx can reach it
- *   - Challenge page needs HTTPS (crypto.subtle)
- */
+/*
+#############################################################################################
+# This is the required nginx.conf file for use with the POWBlock NJS module.
+# Spread out the functions and install into your own nginx config as-needed.
+#############################################################################################
+
+load_module modules/ngx_http_js_module.so;
+
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    js_import pow_gate from njs/pow.js;
+
+    # Bind NGINX variables straight to individual NJS export targets
+    js_set $pow_status   pow_gate.validate;
+    js_set $pow_expected pow_gate.getExpected;
+    js_set $pow_secret   pow_gate.getSecret;
+    js_set $pow_backend  pow_gate.getBackend;
+
+    # Set this up for your real website origin
+    upstream origin_backend {
+        server 127.0.0.1:9010;
+    }
+
+    upstream powblock_backend {
+        server 127.0.0.1:9001;
+    }
+
+    server {
+        listen 8080;
+        server_name edge.ingress;
+
+        # -------------------------------------------------------------------------
+        # PREVENT SPOOFING: Clean client headers right away
+        # -------------------------------------------------------------------------
+        proxy_set_header X-PoW-Expected "";
+        proxy_set_header X-PoW-Token "";
+        proxy_set_header X-Original-URL "";
+        proxy_set_header X-Client-IP "";
+        proxy_set_header X-PoW-Secret "";
+        proxy_set_header X-Forwarded-Proto https;
+
+        # -------------------------------------------------------------------------
+        # SINGLE PASS TRAFFIC ROUTING
+        # -------------------------------------------------------------------------
+        location / {
+            # Map tracking headers directly. NGINX resolves these on demand.
+            proxy_set_header X-Original-URL  $scheme://$http_host$request_uri;
+            proxy_set_header X-Client-IP     $remote_addr;
+            proxy_set_header X-PoW-Expected  $pow_expected;
+            proxy_set_header X-PoW-Secret    $pow_secret;
+
+            # NGINX evaluates $pow_backend, running your JS logic exactly once,
+            # and passes the traffic directly to the right backend.
+            proxy_pass http://$pow_backend;
+        }
+    }
+}
+
+*/
+
+/*#####################################################
+Save the JS code below as pow.js in /etc/nginx/njs (you'll probly have to mkdir /njs)
+and use it together with the nginx config provided in the comment block above. This
+requires installing the nginx-module-njs plugin, available in most repos. In some Debians
+its listed as libnginx-mod-http-js
+#####################################################*/
 
 import crypto from 'crypto';
 
-// === Your secret key (CHANGE THIS - must match nginx map default, and rotate them occasionally) ===
-const SECRET =
-    'xxxyyyzzz123123aaaaaaaaaaaaabbbbbbbbbbbbbbbbb0000000000000000';
+//THE MAGIC KEY - ROTATE THIS STRING OCCASIONALLY
+const POW_SECRET = "xxxyyyzzz123123aaaaaaaaaaaaabbbbbbbbbbbbbbbbb0000000000000000";
 
-function client_ip(r) {
-    // Basic controller: direct peer address (same spirit as VCL client.ip).
-    // Behind a trusted CDN, replace with the appropriate header.
-    return r.remoteAddress || '0.0.0.0';
-}
+// Global cache object to hold variables within the lifecycle of a single request
+let cache = { expected: '', ip: '', backend: 'powblock_backend' };
 
-function expected_token(r) {
-    const data = client_ip(r) + SECRET;
-    return crypto.createHash('sha256').update(data).digest('hex');
-}
+function validate(r) {
+    const clientIp = r.remoteAddress;
+    
+    // Grab the raw cookie header string safely
+    const rawCookieHeader = r.headersIn['Cookie'] || '';
+    const clientToken = parseCookie(rawCookieHeader, 'POW_TOKEN');
 
-function get_cookie(r, name) {
-    const raw = r.headersIn['cookie'];
-    if (!raw) {
-        return '';
+    const rawPayload = clientIp + POW_SECRET;
+    const expectedHash = crypto.createHash('sha256').update(rawPayload).digest('hex').toLowerCase();
+
+    // Cache the variables in memory
+    cache.expected = expectedHash;
+    cache.ip = clientIp;
+
+    // Strict validation check
+    if (clientToken && clientToken === expectedHash) {
+        cache.backend = 'origin_backend';
+        return "VALID";
     }
-    const parts = raw.split(';');
-    for (let i = 0; i < parts.length; i++) {
-        const p = parts[i].trim();
-        const eq = p.indexOf('=');
-        if (eq === -1) {
-            continue;
-        }
-        const k = p.substring(0, eq);
-        if (k === name) {
-            return p.substring(eq + 1);
+
+    cache.backend = 'powblock_backend';
+    return "INVALID";
+}
+
+function getExpected(r) { return cache.expected; }
+function getSecret(r)    { return POW_SECRET; }
+
+function getBackend(r)   { 
+    validate(r); // Force evaluation pass instantly to populate the cache
+    return cache.backend; 
+}
+
+// String-split parser to cleanly isolate cookies without breaking on spaces (compatibility)
+function parseCookie(cookieHeader, name) {
+    if (!cookieHeader) return '';
+    const cookies = cookieHeader.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.startsWith(name + '=')) {
+            return decodeURIComponent(cookie.substring(name.length + 1));
         }
     }
     return '';
 }
 
-function token_valid(r) {
-    const token = get_cookie(r, 'POW_TOKEN');
-    if (!token) {
-        return false;
-    }
-    return token === expected_token(r);
-}
-
-/** js_set: "1" = valid token to origin; "0" = send to POWBlock */
-function ok(r) {
-    return token_valid(r) ? '1' : '0';
-}
-
-/** js_set: value for X-PoW-Expected */
-function expected(r) {
-    return expected_token(r);
-}
-
-/** js_set: value for X-Client-IP */
-function client_ip_var(r) {
-    return client_ip(r);
-}
-
-export default {
-    ok: ok,
-    expected: expected,
-    client_ip: client_ip_var
-};
+export default { validate, getExpected, getSecret, getBackend };
