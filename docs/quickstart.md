@@ -120,7 +120,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock188J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock189J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -141,29 +141,29 @@ If you want to go custom, read on below.
 #### Run Standalone with Defaults
 This is enough in ~80% of cases. It uses a POW difficulty of 20, listens on port 9001, sets a 13-hour token cookie expiry, 420s challenge time, requires no auth, uses SHA256 POW hash, and loads `powchallenge.html` from the working directory:
 ```bash
-./powblock188J-static
+./powblock189J-static
 ```
 
 #### Run with Flags
 Missing flags will automatically revert to default settings. Flag order does not matter:
 ```bash
-./powblock188J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
+./powblock189J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
 ```
 
 **Example Custom Execution:**
 ```bash
-./powblock188J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
+./powblock189J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
 ```
 
 **Get Help:**
 ```bash
-./powblock188J-static -h
+./powblock189J-static -h
 # OR
-./powblock188J-static --h
+./powblock189J-static --h
 # OR
-./powblock188J-static -help
+./powblock189J-static -help
 # OR
-./powblock188J-static --help
+./powblock189J-static --help
 ```
 
 ---
