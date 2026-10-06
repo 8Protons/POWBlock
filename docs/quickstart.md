@@ -329,7 +329,7 @@ Save this file as `/etc/fail2ban/filter.d/powblock.conf`:
 ```ini
 [Definition]
 # Catches all drop types (rate-limits, max connections, trickle, slowloris, etc.)
-failregex = ^.*?\[POWBLOCK\] DROP .*? from <HOST>\$
+failregex = ^.*?\[POWBLOCK\] DROP .*? from <HOST>$
 
 ignoreregex =
 ```
