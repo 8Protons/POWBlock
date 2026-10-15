@@ -89,6 +89,8 @@ unset req.http.X-Client-IP;
 
 ## Part 3: The POWBlock Service
 
+**Looking for advice on Windows or BSD versions?** [Click here!](https://github.com/8Protons/POWBlock/blob/main/docs/windows-bsd-ardjet.md)
+
 POWBlock has an old-school design. You set its parameters at startup time using run flags. While we prefer to use `systemd` for easy scaling, you can run it with any init system you want.
 
 ### Installation & User Setup
