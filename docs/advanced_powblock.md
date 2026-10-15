@@ -29,7 +29,7 @@ POWBlock is particularly good at stopping automated spam if your proxy is config
 
 Because POWBlock is a primitive, it can be incorporated into a server stack in a massive variety of ways.  Functionally no two mature websites using it will likely have exactly the same software stacks, security checks, issuance logic, or validation logic.  This means that there is no standardized attack surface for hostile clients to research and tune against.  Every website running it presents a unique challenge to every attacker. Just remember that POWBlock is extremely powerful but relies on (you) being smart about how you use it.  There are no training wheels.
 
-POWBlock is tiny and boring on purpose. It is a single-threaded EPOLL server with no dynamic memory growth after startup, no keepalive, no complex parsers, no upstream libraries or supply-chain dependencies, and fixed-size buffers that fit in a CPU core’s hot path. Every allocation is hard-capped, every input is length-checked and rejected early, and the only cryptographic operations are standard HMAC-256 and SHA-256/512 for a straightforward leading-zero proof-of-work. 
+Lastly, POWBlock is tiny and boring on purpose. It is a single-threaded EPOLL server with no dynamic memory growth after startup, no keepalive, no complex parsers, no upstream libraries or supply-chain dependencies, and fixed-size buffers that fit in a CPU core’s hot path. Every allocation is hard-capped, every input is length-checked and rejected early, and the only cryptographic operations are standard HMAC-256 and SHA-256/512 for a straightforward leading-zero proof-of-work. 
 
 This all means that the attack surface is measured in a few thousand lines of straightforward C99+GNU rather than a web framework or a multi-threaded runtime. There is very little uncontrolled code that could ever hide a surprise. Our background goal was to create it in such a way that it would look perfectly normal sitting alongside netcat, telnet, or any of the thousand other boring-but-performant network primitives.
 
@@ -79,6 +79,8 @@ POWBlock binds on all interfaces (0.0.0.0) and supports networking by default, m
 POWBlock does not require any configuration to do this - it is enabled by default, though it is critical that such users secure the POWBlock machine with a firewall that only accepts connections from the trusted reverse proxies.  In such cases the remote proxy auth key should be enabled and authorized proxies should be configured to submit the X-PoW-ClientAuth header containing the key with every request.  
 
 POWBlock supports being ran behind a simple TLS proxy like Hitch or Haproxy, and when configured with certs this can secure traffic between the remote proxy and the powbox server via ordinary HTTPS (just set the HTTPS domain, instead of the IP address of the powbox, as your proxy backend and configure your proxy for TLS when using it, or use Stunnel if your proxy doesn't support backend TLS).  Remember that POWBlock *is a backend* and must be treated as such, with traffic being passed to it transparently.
+
+Beginning with v1.8.10, POWBlock supports the PROXY v1 protocol via the -proxyv1 startup arg.  Using this will allow accurate logging of the remote proxy's IP address when POWBlock is operating behind TLS.  Make sure that your TLS terminator supports it. An advanced Stunnel setup using TLS and PROXY can be found in the technical readme.
 
 **Example minimalist Stunnel config:**
 
