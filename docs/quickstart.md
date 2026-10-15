@@ -139,7 +139,7 @@ If you want to go custom, read on below.
 ### Basic Run Commands
 
 #### Run Standalone with Defaults
-This is enough in ~80% of cases. It uses a POW difficulty of 20, listens on port 9001, sets a 13-hour token cookie expiry, 420s challenge time, requires no auth, uses SHA256 POW hash, and loads `powchallenge.html` from the working directory:
+This uses a POW difficulty of 20, listens on port 9001, sets a 13-hour token cookie expiry, 420s challenge time, requires no auth, uses SHA256 POW hash, and loads `powchallenge.html` from the working directory:
 ```bash
 ./powblock189J-static
 ```
@@ -192,6 +192,7 @@ Missing flags will automatically revert to default settings. Flag order does not
 | `-loose` | Disables base64 format validation in the sanity checker and ignores the last IP octet when validating the IP bind between challenge and submission. *(Convenient for oddball browsers, private VPNs, TOR, etc.)* |
 | `-silent` | Disables all client-side error messages (429, 400, etc.) and forces silent drops on errors. |
 | `-secure` | Sets the Secure flag on the POW_TOKEN and POW_ID cookies. **Default: off** |
+| `-proxyv1` | Enables parsing of PROXY v1 protocol data to populate peer_ip when operating behind TLS. **Default: off** |
 | `-license` | Accepts a valid 16-digit POWBlock license key that enables optional control headers. |
 ---
 
