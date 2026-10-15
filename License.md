@@ -1,7 +1,7 @@
 # POWBlock End User License Agreement (EULA)
 
 **Software Name:** POWBlock  
-**Version:** 1.8.0J "Jehuty" Series and Newer  
+**Version:** 1.8.10J "Jehuty" and "Ardjet" Series and newer  
 **Copyright:** © 2026 The Acid Man / Blue Rogues Development Association. All Rights Reserved.  
 *Record key ssl maclhandbroiect1oa3emrn*
 
