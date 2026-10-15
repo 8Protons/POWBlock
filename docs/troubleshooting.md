@@ -19,6 +19,7 @@ This document expands on the Troubleshooting section of the Technical README.
 3. Can the reverse proxy reach that port? (firewall / UFW / iptables / security groups)
 4. If using `-auth`, is the proxy sending a matching `X-PoW-ClientAuth` header?
 5. Did bind fail because the port is privileged (<1024) and the process is not root?
+6. If using -proxyv1, the PROXY protocol data is mandatory and connections that lack it are dropped
 
 **Notes**
 - Restricted ports require root or capabilities; prefer a high port (default 9001).
@@ -160,7 +161,21 @@ Tune with: `-rlimit`, `-rwindow`, `-slimit`, `-swindow`, `-maxcli`, `-tsize`, `-
 | Active connection sweep | every 20s |
 | Trickle protection | drop after 60 reads ≤ 17 bytes |
 
-Many of these are tunable via startup flags in 1.8.7+.
+
+## Default limits (1.8.x “Ardjet”)
+
+| Limit | Default |
+|-------|---------|
+| Max concurrent connections | 1000/63 (BSD/Windows |
+| Max connections per IP | 10 |
+| General rate limit | 100 / 120s per IP |
+| Submission rate limit | 12 / 300s per IP |
+| Header / slowloris timeout | 15s |
+| Connection lifetime (`-ctime`) | 240s |
+| Active connection sweep | every 15s |
+| Trickle protection | drop after 28 reads ≤ 32 bytes |
+
+Many of the limits are tunable via startup flags in 1.8.7+.
 
 ---
 
@@ -170,3 +185,5 @@ Many of these are tunable via startup flags in 1.8.7+.
 - Confirm the proxy is sending the headers you think it is (temporary log or debug backend).
 - Check Fail2ban / journal for repeated DROP lines for the test IP.
 - Verify the challenge page was not customized in a way that breaks token submission or the fallback redirect.
+- If using Ardjet, consider using --assimilate to lock the binary to your native platform
+- Verify your OS limits on maximum file descriptors in FreeBSD
