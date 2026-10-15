@@ -11,7 +11,7 @@ POWBlock is a simple, high performance proof-of-work gateway that sits behind an
 
 No fancy UI, no bloated framework, no exotic runtime, no massive dependency list - just a single ~1MB drop-in binary with zero dependencies that runs on basically anything and scales linearly if you spin up multiple instances.  POWBlock can be controlled by HTTP headers injected by your proxy or server and does not require any integration with your website code to work - No embeds, no widgets, no Wordpress plugins needed.  It's built on the classic UNIX philosophy to do exactly one job, and to do it well.  It does this while using absolutely minimal system resources and presenting an absolutely minimal attack surface, and is especially designed to operate under the control of your existing stack. It is proof-of-work defense *as a composable primitive* and is the first of its kind. 
 
-The "Jehuty" series releases are compiled for AMD64 Linux systems, preferably Debian based, and beginning with POWBlock v1.8.10 the "Ardjet" series releases are compiled for 64-bit FreeBSD v12+ and Windows Server v2004+ as well.
+The "Jehuty" series releases are compiled for AMD64 Linux systems, preferably Debian based, and beginning with POWBlock v1.8.10 the "Ardjet" series releases are compiled for 64-bit FreeBSD v12+ and Windows Server v2004+ as well. If you need to use POWBlock on ARM64 Linux, we recommend using the BSD build of Ardjet!
 
 > [!TIP]
 > ### 🚀 Getting Started
