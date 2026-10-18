@@ -112,7 +112,7 @@ Your service manager (Task Scheduler, rc, etc.) will likely require a shell invo
 To capture useful logs on Windows, explicitly redirect `stderr` to a file. Here is an example execution string tailored for **Windows Task Scheduler**:
 
 ```cmd
-cmd.exe /c ""C:\Program Files\Powblock\powblock1810-WIN64.exe" -auth Fooauthkeybar123 -license 1234567 -debug > "C:\Program Files\(\Powblock\log.\)txt" 2>&1"
+cmd.exe /c ""C:\Program Files\Powblock\powblock1810-WIN64.exe" -auth Fooauthkeybar123 -license 1234567 -debug > "C:\Program Files\Powblock\log.txt" 2>&1"
 ```
 
 ***
