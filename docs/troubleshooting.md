@@ -79,6 +79,9 @@ Instead of hashing IP + secret, hash a device/TLS fingerprint + secret. JA3N / J
 **HTTP/3 caveat**
 With HTTP/3 enabled, TLS fingerprints can be non-deterministic (HTTP/2 vs HTTP/3 path). If fingerprints flap, lock the edge to HTTP/2 (ALPN) or HTTP/1.1 for consistency.
 
+**Browser prints supported since v1.8.11**
+Newer versions can use the startup arg -useprints to enable a new `X-PoW-Print` control header up to 500 chars long. The proxy can use this header to pass a TLS, UA, or Javascript-derived browser fingerprint to POWBlock which is then used for logging.  If you're generating these prints in the proxy you might also use them as your hash.
+
 ---
 
 ## `X-PoW-HostDomain` does not scope cookies correctly
@@ -106,13 +109,13 @@ If you customize the challenge page, keep an equivalent fallback.
 
 ---
 
-## Stats endpoint surprises
+## Stats and Health endpoint surprises
 
-`GET /POWBlockStats` is reachable through the same path clients use for challenges if `X-Original-URL` is `/POWBlockStats`.
+`GET /POWBlockStats` or `GET /POWBlockHealth` are reachable through the same path clients use for challenges if `X-Original-URL` matches either.
 
-**Recommendation:** Block or restrict `/POWBlockStats` in the proxy. It is intended for local/admin use (`curl` from the host, optionally with `X-PoW-ClientAuth`).
+**Recommendation:** Block or restrict them in the proxy. It is intended for local/admin use (`curl` from the host).
 
-Polling walks the rate table and is relatively expensive; do not hit it at high frequency under load.
+Polling the stats page walks the rate table and is relatively expensive; do not hit it at high frequency under load.
 
 ---
 
@@ -170,7 +173,7 @@ Tune with: `-rlimit`, `-rwindow`, `-slimit`, `-swindow`, `-maxcli`, `-tsize`, `-
 | Max connections per IP | 10 |
 | General rate limit | 100 / 120s per IP |
 | Submission rate limit | 12 / 300s per IP |
-| Header / slowloris timeout | 15s |
+| Header / slowloris timeout | 10s/15s Windows/BSD |
 | Connection lifetime (`-ctime`) | 240s |
 | Active connection sweep | every 15s |
 | Trickle protection | drop after 28 reads ≤ 32 bytes |
