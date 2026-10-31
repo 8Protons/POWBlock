@@ -122,7 +122,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock1810J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock1811J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -143,29 +143,29 @@ If you want to go custom, read on below.
 #### Run Standalone with Defaults
 This uses a POW difficulty of 20, listens on port 9001, sets a 13-hour token cookie expiry, 420s challenge time, requires no auth, uses SHA256 POW hash, and loads `powchallenge.html` from the working directory:
 ```bash
-./powblock1810J-static
+./powblock1811J-static
 ```
 
 #### Run with Flags
 Missing flags will automatically revert to default settings. Flag order does not matter:
 ```bash
-./powblock1810J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
+./powblock1811J-static -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -loose -silent -license [key] -help
 ```
 
 **Example Custom Execution:**
 ```bash
-./powblock1810J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -debug -fast 1100 -loose -license 123456789
+./powblock1811J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -randfast 1100-1600 -loose -solvelogs -inject "server A instance 3" -dump /home/user/powblock.log -license 123456789
 ```
 
 **Get Help:**
 ```bash
-./powblock1810J-static -h
+./powblock1811J-static -h
 # OR
-./powblock1810J-static --h
+./powblock1811J-static --h
 # OR
-./powblock1810J-static -help
+./powblock1811J-static -help
 # OR
-./powblock1810J-static --help
+./powblock1811J-static --help
 ```
 
 ---
@@ -195,6 +195,12 @@ Missing flags will automatically revert to default settings. Flag order does not
 | `-silent` | Disables all client-side error messages (429, 400, etc.) and forces silent drops on errors. |
 | `-secure` | Sets the Secure flag on the POW_TOKEN and POW_ID cookies. **Default: off** |
 | `-proxyv1` | Enables parsing of PROXY v1 protocol data to populate peer_ip when operating behind TLS. **Default: off** |
+| `-dump` | Takes an absolute path to your dedicated POWBlock log file. **Default: off + logs to syslog/journal** |
+| `-mslog` | Millisecond log throttle used for -solvelogs. **Default: 500** |
+| `-useprints` | Safely parses the X-PoW-Print control header, allowing POWBlock to log proxy-supplied client UA/fingerprints up to 500 chars long. **Default: off + header ignored** |
+| `-inject` | Takes a "quoted" text string up to 128 chars and safely adds that string to the cpage footer, 400 client errors, and select logs. **Default: off** |
+| `-randfast` | Takes a range in milliseconds, e.g. 1100-1550, and sets a random max solve speed from the range on each submission. **Default: off** |
+| `-solvelogs` | Logs the IP, proxy, URL, inject, print, difficulty, and solve time of every client. **Default: off** |
 | `-license` | Accepts a valid 16-digit POWBlock license key that enables optional control headers. |
 ---
 
@@ -213,38 +219,48 @@ To read more, check out the details in the big technical readme.
 
 ## Part 5: Statistics & Monitoring
 
-POWBlock features a plaintext statistics readout that displays real-time performance data and historical counts tracked since system startup.
+POWBlock features a useful statistics readout that displays real-time performance data and historical counts tracked since system startup.
 
 ### Monitored Metrics
 
 #### System & Performance
-* **Uptime:** Total running time in seconds since startup.
-* **Current Active Connections:** The number of active connections open right now.
-* **Total Requests Processed:** Combined count of all processed network requests.
-* **Average Requests Per Second:** The historical throughput average since startup.
+* **Uptime:** Seconds since startup (`uptime_seconds`).
+* **Current Active Connections:** Connections open right now (`active_connections`).
+* **Total Requests Processed:** Requests that entered the handler (`total_requests`). Health checks are not counted. Stats scrapes are.
+* **Average Requests Per Second:** `total_requests` divided by uptime (`avg_requests_per_second`). This is the lifetime figure and it stays last in the output. It is not the same number as the windows below.
+
+#### Recent rate
+Challenges are pages actually issued. Submissions are any request line containing `powblock=`, including rejects. If the process is younger than the window, the rate is divided by uptime instead of by 60 or 300, so a fresh start does not look idle.
+* **Challenge RPS, last 60 seconds** (`challenge_rps_60s`).
+* **Challenge RPS, last 5 minutes** (`challenge_rps_5m`).
+* **Submission RPS, last 60 seconds** (`submission_rps_60s`).
+* **Submission RPS, last 5 minutes** (`submission_rps_5m`).
+* **Peak Challenge RPS:** Busiest single second of challenges since startup (`peak_challenge_rps`).
+* **Peak Submission RPS:** Busiest single second of submission attempts since startup (`peak_submission_rps`).
 
 #### Proof of Work (PoW) Details
-* **Valid POW Tokens Issued:** The total number of successful challenges solved.
-* **Average POW Solve Time:** The average duration across all users to solve a challenge.
-* **Failed Challenges:** Counts malformed answers, answers falling below the required difficulty, and speed limit rejections when `-fast` is active.
+* **Valid POW Tokens Issued:** Successful solves (`tokens_issued`).
+* **Average POW Solve Time:** Mean solve time in milliseconds across those tokens (`avg_solve_time_ms`).
+* **Failed Challenges:** Answers under the required difficulty, plus solves rejected by `-ctime`, `-fast` or `-randfast` (`challenge_failed`). Malformed/insane submissions are dropped and logged, but they are not added to this counter.
 
 #### Network Mitigation & Drops
-* **Client IP Hash Table:** Tracks approximately 100,000 IPs for rate limiters and connection management.
-* **Rate Limit Hits:** Triggered by global requests exceeding limits from a single IP.
-* **Submission Limit Hits:** Triggered when a single IP submits too many PoW answers.
-* **IP Mismatches:** Client failures where the solution came from a different IP than the challenge recipient.
-* **Invalid HMAC Fails:** Client failures caused by exceeding the `ctime` limit or attempting to reuse/forge a challenge token.
-* **Slowloris Drops:** Triggered when a client sends no data for 30+ seconds.
-* **Timeout Drops:** Occurs when a client exceeds the `ctime` limit before completion (rarely seen, as Slowloris drops typically catch these first).
-* **Trickle Drops:** Dropped connections caused by a client sending too many sequential tiny packets.
-* **Max Connection Drops:** Triggered when a single client attempts to open more than 20 simultaneous PoW challenges.
+* **Client IP Hash Table:** Occupied slots out of the fixed table (`rate_table_occupied`). 524288 slots on the Linux build.
+* **Rate Limit Hits:** General per-IP request limit (`rate_limit_hits`).
+* **Submission Limit Hits:** Per-IP cap on PoW answers (`submission_limit_hits`).
+* **IP Mismatches:** Solved token was issued to a different IP than the one submitting it (`ip_mismatch`).
+* **Invalid HMAC Fails:** Signature check failed. Forged or corrupted tokens only (`hmac_invalid`).
+* **Slowloris Drops:** Header phase went quiet longer than the header timeout, 30 seconds on the Linux build (`slowloris_drops`).
+* **Timeout Drops:** Connection still open after `ctime` (`lifetime_timeout_drops`). Slowloris only covers clients that never finished sending headers.
+* **Trickle Drops:** Too many sequential tiny reads (`trickle_drops`).
+* **Max Connection Drops:** One IP tried to open more simultaneous challenges than `-maxcli` (default 20) (`per_ip_conn_drops`).
 
 ---
 ![stats](https://github.com/8Protons/POWBlock/blob/main/docs/statspage.png)
 
 ### Accessing the Readout
 
-You can retrieve these statistics by making a local request to the `/POWBlockStats` endpoint using `curl`. 
+You can retrieve these statistics by making a local request to the `/POWBlockStats` endpoint using `curl`.  Text stats are `GET /POWBlockStats`. The same fields are returned as JSON with `GET /POWBlockStats?format=json`.
+
 
 #### Basic Local Request
 ```bash
@@ -270,9 +286,14 @@ watch -n 5 'curl localhost:9001/POWBlockStats'
 
 ### Important Security Consideration
 
-The `/POWBlockStats` page is technically accessible from the public web unless you explicitly block the path at your proxy layer. 
+The `/POWBlockStats` page is technically accessible from the public web unless you block the path at your proxy layer. 
 
 Because incoming clients requiring a challenge are routed to the POWBlock port by the proxy, an external user sending a request with an `X-Original-URL` header set to `/POWBlockStats` will bypass the challenge page and see your system metrics. This was left in the code because it can be a handy quirk for the admin during setup, but be aware of it and block the URL once you no longer need it.
+
+### Health Checks
+
+POWBlock since v1.8.11 has a simple health check endpoint at `/POWBlockHealth` that can be accessed by your proxy, load balancer or network administration dashboard.  When accessed it returns a plain `200 ok` HTTP response if POWBlock is operating normally.  Like the stats page, the health page is exposed to the public web by default, so secure it with your proxy.
+
 
 ## Part 6: Security & Configuration Basics
 
