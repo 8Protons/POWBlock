@@ -79,6 +79,7 @@ COMMERCIAL/SHAREWARE Line (2026)
 1.8.8J - Added moderate bugfixes to 1.8.7 after code review, plus arg-tunable log throttling, additional error prints, and capped cpage size to 10kB at startup
 1.8.9J - Added Retry button to client error messages, -secure arg for secure cookies, and refactored logging to show remote proxy IP
 1.8.10J - Added PROXYv1 support for remote POW+TLS, increased HTTP header buffer to 12kB, fixed minor UB in cpage load, and created "Ardjet" port for BSD/Windows
+1.8.11J - Added -randfast, -useprints, -mslog, -inject, -dump, and -solvelogs. Increased resp buffer to 24kB for larger cpages (now 16kB cpage max)
 
 -----------------------------
 === IF YOU NEED WINDOWS OR BSD INFORMATION SCROLL DOWN OR CTRL+F POWBlock for Windows and BSD ===
@@ -105,17 +106,17 @@ The challenge page "powchallenge.html" should be kept in the same directory as t
 Basic run commands:
 
 Run standalone with defaults (POW difficulty 20, listens on port 9001, 13 hour token cookie expiry, 420s challenge time, no auth required, SHA256 POW hash, loads powchallenge.html from same working directory):
-./powblock1810J-static
+./powblock1811J-static
 
 Run with flags (missing flag = default setting, flag order doesn't matter):
-./powblock1810J -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -secure -proxyv1 -fast [milliseconds] -loose -silent -license [key] -help
+./powblock1811J -port [port] -diff [difficulty] -ctime [ctime] -auth [authkey] -hash [hashvalue] -cpage [/path/to/yourchallenge.html] -debug -secure -proxyv1 -fast [milliseconds] -loose -silent -license [key] -help
 
-e.g. ./powblock1810J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -maxconns 4096 -rlimit 60 -rwindow 180 -slimit 7 -swindow 30 -maxcli 13 -debug -fast 1100 -loose -license 123456789
+e.g. ./powblock1811J-static -port 9001 -diff 20 -ctime 420 -auth foobar123 -hash 512 -cpage /usr/local/sbin/foobar.html -maxconns 4096 -rlimit 60 -rwindow 180 -slimit 7 -swindow 30 -maxcli 13 -debug -fast 1100 -loose -license 123456789
 
 Good test command:
-./powblock1810J-static -port 9001 -diff 19 -ctime 85 -maxconns 7777 -cpage powchallenge.html -maxcli 100 -slimit 100 -swindow 1200 -rlimit 200 -rwindow 600 -fast 1100 -tsize 32 -tmax 1000 -loose -secure -log 0 -debug
+./powblock1811J-static -port 9001 -diff 19 -ctime 85 -maxconns 7777 -cpage powchallenge.html -maxcli 100 -slimit 100 -swindow 1200 -rlimit 200 -rwindow 600 -fast 1100 -tsize 32 -tmax 1000 -loose -secure -log 0 -debug -dump pblog.txt
 
-or ./powblock1810J-static -h / --h / -help
+or ./powblock1811J-static -h / --h / -help / --help
 
 help:  Displays a compact manual summarizing key points from the documentation. Also triggered by -h/--h
 
@@ -151,13 +152,27 @@ debug:  Enables very verbose debug logging to the console/syslog
 
 fast:  Sets a speed limit (milliseconds) that rejects a client if they solve too fast, perhaps from using a GPU/ASIC cracker. Default is OFF
 
-loose: Disables the base64 format validation in the sanity checker, and ignores the last IP octet when validating the IP bind between challenge and submission.  (Convenient for some oddball browsers/apps, private VPNs, TOR, etc that might mangle valid token encoding or hop the last octet per-request)
+loose: Disables the base64 format validation in the sanity checker, and ignores the last IP octet when validating the IP bind between challenge and submission  (Convenient for some oddball browsers/apps, private VPNs, TOR, etc that might mangle valid token encoding or hop the last octet per-request)
 
 silent:  Disables all client side error messages (429, 400, etc) and forces silent drops on errors
 
 secure:  Sets the Secure flag on both the POW_TOKEN and POW_ID cookies
 
-proxyv1:  Enables parsing of PROXY v1 protocol data to populate peer_ip when operating remote behind TLS (powbox)
+proxyv1:  Enables parsing of PROXY v1 protocol data to populate peer_ip when operating remote behind TLS or a load balancer (powbox)
+
+randfast:  Allows you to set a range in milliseconds, e.g. 1000-1900, where every time a client submits, a random value from the range is picked as the speed limit
+(works like -fast but makes it harder to tune bots against it because it changes every time)
+
+dump:  Takes an absolute path to a log dump file, so POWBlock can keep its own logs separate instead of using the syslog/journal, if you like
+
+useprints:  Enables parsing/sanitizing of a new X-PoW-Print control header (<=500 chars) that can pass a User-Agent string and/or TLS or browser fingerprint for the DROP logs
+
+solvelogs:  When set, POWBlock will log every successful solve - recording clientIP, proxyIP, *X-PoW-Print, requested URL, PoW difficulty, and solve time
+
+mslog:  A millisecond log throttle for -solvelogs, default 500
+
+inject:  Takes "a quoted text string" up to 120 chars, and injects it into the default cpage footer, client 400 errors, and some logs.  Escapes HTML automatically.
+(handy to record an instance ID when running multiple POWBlocks, or just to show a contact email to clients who might have trouble, or both)
 
 license:  Accepts a 16+ char POWBlock license key that enables the optional control headers
 
@@ -166,10 +181,14 @@ Headache notes:
 - Not all legit clients can do SHA512 POW.  Most can, but you *will* see the rare case where a user just can't get in.
 - SHA512 resists GPU cracking and dedicated CPU farms but is harder/slower on browsers too. We suggest lowering difficulty by 1-2 points when using it.
 - Debug mode does not throttle log prints and has highly verbose output, meaning it burns a ton of CPU. Do not use it under heavy load.
-- Fast mode will also affect real clients who get lucky and have a fast solve. Be conservative when setting it (<3000), or increase difficulty slightly.
+- Fast and randfast modes will also affect real clients who get lucky and have a fast solve. Be conservative when setting it (<3000), or increase difficulty slightly.
 - Loose mode relaxes the client IP bind and pre-computation sanity checking, and this *will* allow some hostile bots through. Handle with care.
-- Log prints all use fprintf to stderr which is CPU expensive and can cause the kernel to block if allowed to pile up. Do not run -log set to 0 in prod or an attacker can exploit it.
+- Log prints all use fprintf to stderr which is CPU expensive and can cause the kernel to block if allowed to pile up. Do not run -log or -mslog set to 0 in prod or an attacker can exploit it.
 - PROXY v1 protocol is *required* when -proxyv1 is set. If the data isn't being sent, clients will be dropped. Debug mode logs this.
+- Dump mode can use relative paths, but beware of it breaking log resume if you move the logfile or binary. Absolute path is better. Mind your permissions!
+- Useprints does header sanitization to make sure a client can't send a poisoned User-Agent to mess with us, but it changes spaces into underscores.
+- Inject requires the text to be quoted - e.g. -inject "This is my text." and the cpage must accommodate it with a 4th arg (%s) AFTER the others. The default cpage is already set up for -inject.
+- If you mess up the arg order (%s, %d etc) in the cpage, POWBlock will segfault on the first page request due to a bad type match. Handle with care when modifying.
 
 -----------------------------
 Proxy Configuration Basics:
@@ -197,6 +216,9 @@ X-PoW-Expected:  Contains the expected POW_TOKEN value (hash of client data or I
 
 X-Original-URL:  The original requested URL (before the challenge); POWBlock uses it to 302-redirect the client back to the correct page after solving the challenge. This must be set by your proxy.  If it is absent or malformed the 302 URL defaults to "/".
 
+OPTIONAL (free)
+
+X-PoW-Print:  Holds up to 500 chars.  POWBlock sanitizes CRLF+CCs, and adds the resulting safe string into the solve and DROP logs.  Intended for passing the client's User-Agent and/or fingerprints for better visibility.  Ignored unless -useprints was set at startup
 
 OPTIONAL (gated behind license):
 
@@ -225,6 +247,7 @@ Example config files are included in the documentation.  Since our primary use c
 	unset req.http.X-Client-IP;
 	unset req.http.X-PoW-Difficulty;
 	unset req.http.X-PoW-CTime;
+    unset req.http.X-Original-URL;
 	unset req.http.X-PoW-HostDomain;
 	
     # Your secret key  - CHANGE THIS to a long, random string of letters and numbers!
@@ -268,12 +291,12 @@ Example config files are included in the documentation.  Since our primary use c
 -----------------------------
 POWBlock Stats Polling:
 
-POWBlock has a plaintext stats readout that shows the following data (counts are since startup):
+POWBlock has a stats readout in plaintext or JSON format that shows the following data:
 - Uptime in seconds
 - Current active connections right now
-- Total requests processed
-- Client IP hash table in use (table can track around 100k IPs for the rate limiters and conn counts)
-- Failed challenges (insane/malformed answers, answers with leading 0 bits < difficulty, and speed limit rejections when -fast is enabled)
+- Total requests processed since startup
+- Client IP hash table in use (table can track around 500k IPs for the rate limiters and conn counts)
+- Failed challenges (insane/malformed answers, answers with leading 0 bits < difficulty, and speed limit rejections)
 - Valid POW tokens issued
 - Average POW solve time across all users
 - Rate limit hits (global requests for 1 IP)
@@ -283,20 +306,35 @@ POWBlock has a plaintext stats readout that shows the following data (counts are
 - Slowloris drops (no client data submitted for 30+ seconds)
 - Timeout drops (client took longer than CTime to complete a connection - this is rare since Slowloris drops catch these first)
 - Trickle drops (too many tiny packets were sent by the client)
-- Client max simultaneous connection drops (client tried to open >20 POW challenges at once)
-- Average requests per second since startup
+- Client max simultaneous connection drops (client tried to open too many POW challenges at once)
+- Challenge request rate over the last 60 seconds
+- Challenge request rate over the last 5 minutes
+- Submission rate over the last 60 seconds
+- Submissions rate over the last 5 minutes
+- Peak challenges per second since startup
+- Peak submissions per second since startup
+- Average global requests per second since startup
 
 To access this readout, use curl from the local machine that POWBlock is running on to access the POWBlock port and request the /POWBlockStats page.  If using auth keys include them via the curl -H arg:
 
-curl -H X-PoW-ClientAuth:fooauthkeybar123 localhost:9001/POWBlockStats
+curl localhost:9001/POWBlockStats
+or
+curl localhost:9001/POWBlockStats?format=json
 
-Executing this command on a machine that has multiple POWBlock instances running will poll one of them at random, but due to the kernel's own load balancing this will still give a good idea of what the average system stats look like. The grand total will be approximately [visible stats] multiplied times [POWBlock instances running].
+If using -auth:
+curl -H X-PoW-ClientAuth:fooauthkeybar123 localhost:9001/POWBlockStats
+or
+curl -H X-PoW-ClientAuth:fooauthkeybar123 localhost:9001/POWBlockStats?format=json
+
+The stats page takes an optional query string that serves its output in JSON format instead of plaintext.  Executing these commands on a machine that has multiple POWBlock instances running will poll one of them at random, but due to the kernel's own load balancing this will still give a good idea of what the average system stats look like. The grand total will be approximately [visible stats] multiplied times [POWBlock instances running].
 
 Stat polling is scriptable, and can be turned into a live feed with the Linux "watch" command:
 
 watch -n 5 'curl localhost:9001/POWBlockStats'
 
 Note:  The /POWBlockStats page is technically accessible from the web unless you block the /POWBlockStats URL via your proxy. This happens because a client connecting who needs POW gets sent to the POWBlock port via the proxy, and if X-Original-URL was /POWBlockStats then it will show the stats display rather than the challenge page. This was left in the code because it can be a handy quirk for the admin, but be aware of it.  The stats page is subject to the normal rate limiter, but calling it is a bit expensive since the rate table stat check walks the entire table each time.
+
+In addition to stats, POWBlock v1.8.11 added a /POWBlockHealth endpoint that returns a plain HTTP 200 "ok" message if the program is operating normally.  Like the stats page, the health check is technically exposed to the public web.  Once you decide how you're going to be using it, make sure you secure it against unauthorized access.
 
 -----------------------------
 System and Security Considerations:
@@ -405,11 +443,11 @@ Operational guidance
 - FreeBSD (12+) scales the same as Linux via SO_REUSEPORT_LB, but mind your OS global maxfiles limit as it is shared between all POWBlock instances.  Tune your kernel.
 - Other BSDs will have to scale manually with a load balancer like the Windows version since they also have bad port reuse.
 - Redirect stderr logging to a file to get useful logs, e.g. using Windows Task Scheduler:
-cmd.exe /c ""C:\Program Files\Powblock\powblock1810-WIN64.exe" -auth Fooauthkeybar123 -license 1234567 -debug > "C:\Program Files\Powblock\log.txt" 2>&1"
+cmd.exe /c ""C:\Program Files\Powblock\powblock1811-WIN64.exe" -auth Fooauthkeybar123 -license 1234567 -debug > "C:\Program Files\Powblock\log.txt" 2>&1"
 
 Ardjet exists so POWBlock isn't stuck as Linux-only. Jehuty remains the reference implementation and the build we run and harden first under real load.
 
-A fun quirk of APE is that the Windows build is technically a true universal. Linux/BSD/Win on AMD or ARM - just drop it down and run it in the console.  If you just want to take POWBlock for a quick test drive, its the easiest and fastest way.
+A fun quirk of APE is that the Windows build is technically a true universal. Linux/BSD/Win on AMD or ARM - just drop it down and run it in the console.  If you just want to take POWBlock for a quick test drive, its the easiest and fastest way.  The BSD version also runs very well on Linux, and we recommend it if you need to run POWBlock on ARM64.
 
 -----------------------------
 Advanced POWBlock:  Banning
@@ -456,7 +494,7 @@ action = %(action_)s
 -----------------------------
 Advanced POWBlock:  Distributed Networks
 
-If your website uses a number of frontends (for example, multiple reverse proxies on round-robin DNS all serving a single origin) POWBlock can accommodate this easily.  Since POWBlock is completely stateless there is no concern with shared state across multiple frontend servers.  The only thing required is that each server uses an identical configuration for the POW issuance/validation logic and an identical X-PoW-Secret key.  Then it doesn't matter which server a client accesses - the tokens and validation will always be the same, and a client passing POWBlock on any connection is instantly recognized by all the other frontends.
+If your website uses a number of frontends (for example, multiple reverse proxies on round-robin DNS all serving a single origin) POWBlock can accommodate this easily.  Since POWBlock is completely stateless there is no concern with shared state across multiple frontend servers.  The only thing required is that each server uses an identical configuration for the POW issuance/validation logic and an identical X-PoW-Secret key.  Then it doesn't matter which server a client accesses - the tokens and validation will always be the same, and a client passing POWBlock on any connection is instantly recognized by all the other frontends.  Since v1.8.11 you can also use the -inject arg to put a server/instance ID into each round-robin node's cpage and client errors, making network debugging easier.
 
 -----------------------------
 Advanced POWBlock:  Scaling
@@ -471,7 +509,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/powblock1810J-static -port 9001 -diff 17 -ctime 80 -loose
+ExecStart=/usr/local/sbin/powblock1811J-static -port 9001 -diff 17 -ctime 80 -loose
 WorkingDirectory=/usr/local/sbin/
 Restart=always
 RestartSec=5
@@ -539,6 +577,7 @@ CAfile = /etc/stunnel/server.pem
 verifyPeer = yes
 ### END CLIENT CONFIG ###
 
+Since v1.8.11J, POWBlock fully closes the circle on using it for a remote PoW server.  The enterprise-grade setup can now run multiple POWBlock instances on separate ports, each -injecting its own instance ID, with the instances all load balanced behind Haproxy/etc and your traffic protected by -auth, TLS, and PROXY v1, with as much logging as you might ever need.
 
 -----------------------------
 Advanced POWBlock:  TOR Onion POW
@@ -606,11 +645,11 @@ Valid:  .example.com (scopes example.com and all subdomains of it including www)
 Invalid:  example.com	subdomain.example.com
 Alternatively you might have your remote, HTTPS protected POW server *not* set as a *transparent* backend. The client should never see the HTTPS domain of the POWBlock server in their browser - only your origin website's domain.
 
-POWBlock 1.8.x Series "Jehuty" Limits
+POWBlock 1.8.x Series "Jehuty" Default Limits
 ================================================================
 
-- Maximum concurrent connections : 8192     (hard cap)
-- Max connections per single IP  : 20       (hard cap)
+- Maximum concurrent connections : 8192
+- Max connections per single IP  : 20
 - Request rate limit             : 100/120s total, 12/300s submissions (per IP, sliding window)
 - Slowloris / header timeout     : 30 seconds
 - Default connection lifetime    : 420 seconds (-ctime flag)
@@ -619,17 +658,18 @@ POWBlock 1.8.x Series "Jehuty" Limits
 ================================================================
 
 
-POWBlock 1.8.x Series "Ardjet" Limits
+POWBlock 1.8.x Series "Ardjet" Default Limits
 ================================================================
 
 - Maximum concurrent connections : 1000 / 63     (BSD/Win, hard cap)
-- Max connections per single IP  : 10       (hard cap)
+- Max connections per single IP  : 10
 - Request rate limit             : 100/120s total, 12/300s submissions (per IP, sliding window)
-- Slowloris / header timeout     : 15 seconds
+- Slowloris / header timeout     : 15 seconds (10s on Windows)
 - Default connection lifetime    : 240 seconds (-ctime flag)
 - Connection sweep runs every    : 15 seconds (zombie & timeout cleanup)
-- Trickle protection             : drops after 28 reads < 32 bytes (non sequential)
+- Trickle protection             : drops after 28 reads < 32 bytes
 ================================================================
+
 
 -----------------------------
 Design Notes for Admins:
@@ -653,14 +693,15 @@ Authority in the Stack:
 Challenge Page Invariants:
 
 - The challenge page HTML is loaded and held in active memory at startup via classic fopen() and SEEK_END.
-- The challenge page, cookies, and full response data (302 URL, token+nonce submission query strings, etc) must all fit inside the 16kB response buffer.
-- This limits your practical challenge page size. Keep your page under ~10kB. Minification of the HTML/JS can help with this.
-- The default powchallenge.html page is around 6kB and takes 3 args from POWBlock:
+- The challenge page, cookies, and full response data (302 URL, token+nonce submission query strings, etc) must all fit inside the 24kB response buffer.
+- This limits your practical challenge page size. Keep your page under ~16kB. Minification of the HTML/JS can help with this.
+- The default powchallenge.html page is around 8kB, loads with snprintf, and takes 4 args from POWBlock:
 - <pre id=c  %s  This takes the challenge token that POWBlock provided.
 - <pre id=d  %d  This sets the POW difficulty (required leading 0 bits).
 - <pre id=h  %d  This sets the hash algo (SHA-256 or 512).
+- Plain %s  This takes the -inject text (blank if not provided)
 - Other % symbols (if present) in the cpage must be escaped, i.e. %%
-- If you wish to custom craft a challenge page, examine powchallenge.html for the implementation of these variables.
+- If you wish to custom craft a challenge page, examine powchallenge.html for the implementation and order of these variables.
 
 POWBlock Connection Dropping:
 
@@ -668,7 +709,7 @@ POWBlock Connection Dropping:
 - This behavior minimizes attacker knowledge, CPU use, RAM use, and bandwidth use and is intentional.
 - When -silent mode is active, no client response will be sent in the event of *any* error except 503.
 - Under attack this can cause false 503s from your controlling proxy or server because the proxy or server might interpret the high number of "conn close" events without graceful response headers as a down or unhealthy backend. This can cause inadvertent DoS to legitimate clients.
-- Mitigate this by configuring your proxy to ignore the dropped connections for the POWBlock backend, to ping the /POWBlockStats page as a reliable health check, or else see Advanced POWBlock: Banning for direct mitigation.
+- Mitigate this by configuring your proxy to ignore the dropped connections for the POWBlock backend, to ping the /POWBlockHealth page as a reliable health check, or else see Advanced POWBlock: Banning for direct mitigation.
 - Beginning in 1.8.10, MAXCONN drops and MAXCLI drops are no longer silent, returning a minimal 503/429 respectively.
 
 Redirection logic invariants:
@@ -711,10 +752,10 @@ Submission handling:
 
 Header parsing invariants:
 
-- The headers are processed in the first 12kB of the 16kB request buffer, and oversized headers are rejected (hard drop, logged in debug mode).
+- The headers are processed in the first 12kB of the 16kB request buffer, and oversized headers are rejected (hard drop, logged).
 - If dealing with legitimate but huge client headers, you may need to unset their Cookie header before passing them to POWBlock.
 - All headers are copied before use with whitespace trimming and CRLF replaced with '_'.
-- Maximum copied length per header: 4095 chars for X-Original-URL (4000 read), 254 for HostDomain, 127 for X-PoW-Secret and Auth, 63 chars for tokens/IDs, 45 for X-Client-IP, 31 for Ctime and Expires, 15 for Difficulty.
+- Maximum copied length per header: 4095 chars for X-Original-URL (4000 read), 254 for HostDomain, 127 for X-PoW-Secret and Auth, 63 chars for tokens/IDs, 45 for X-Client-IP, 31 for Ctime and Expires, 15 for Difficulty, 500 for Print.
 - If a header value exceeds its individual buffer, it's silently truncated - proxy should keep values sufficiently short.
 - Folded headers cannot be read from the proxy, the parsing grabs the first line only.
 - Headers are parsed from the buffer once at client connect time and held in the struct cache for that connection, read via pointers, sanitized and normalized, and finally the clean values stored back in the struct for use.
@@ -726,7 +767,7 @@ HMAC signature invariants:
 - The final challenge is encoded and parsed by a custom Base64 encoder/decoder function that does not call an external lib and that uses manual padding.
 - The HMAC is checked on challenge issuance and again on answer submission, ensuring the same client solved the same token within the CTime window.
 - If HMAC verification fails it means the challenge was tampered with and these events are logged.
-- If the challenge was not solved within the Ctime limit, it is rejected and these events are logged.
+- If the challenge was not solved within the CTime limit, it is rejected and these events are logged.
 - CTime timestamp grants a forward grace of 15s to account for clock skew into the future.
 - There is a GetPeerName() fallback that will populate the client IP when accessed directly, as well as a fallback randomly generated secret key.
 - THESE TWO FALLBACKS ARE *ONLY* FOR LOCALHOST TESTING WHERE NO PROXY IS AVAILABLE. DO NOT USE THEM IN PROD. YOU HAVE BEEN WARNED.
@@ -742,7 +783,7 @@ Cookie setting behavior:
 
 Performance & DoS resistance invariants:
 
-- Max concurrent connections default cap at 8192 but can be adjusted higher.
+- Max concurrent connections default cap is 8192 but can be adjusted higher.
 - Clients are rate limited to 100 requests per 120s per IP and 12 PoW submissions per 300s per IP, as tracked in a 524288 block hash table with linear probing.
 - Probe depth is 256 and expired entries are tombstoned for reuse.
 - Max connections from a single client IP are default capped at 20 and tracked in the rate limiting hash table. Extras are dropped and logged.
@@ -763,76 +804,117 @@ Logging invariants:
 
 POWBlock Standard Log Messages Reference
 ================================
+Notes:
+- [ID: %s] is the -inject string. Its only on log lines that point at a misconfigured or interesting instance. Empty inject prints [ID: ].
+- Where a format has an extra %s just before "from %s", that slot is either empty or "  '<X-PoW-Print>'" (-useprints only). The final %s is the client IP (Fail2ban <HOST>).
+- [Proxy: %s] is the TCP peer, or the PROXY v1 address when -proxyv1 is on.
+
 Startup / Info Logs:
 Failed to create socket
-Failed to bind. Is the port restricted/too low a number? (permission denied), or in use by something else?: (perror)
+Failed to bind. Is the port restricted/too low a number, or in use by something else? Try -help: (perror)
 Failed to put socket into listening mode
-=== POWBlock v1.8.10 'Jehuty' Started ===
+ERROR: -dump requires an absolute path
+ERROR: -dump requires a path
+ERROR: -dump requires a path: %s
+ERROR: Cannot open log file '%s': %s
+ERROR: Log path '%s' is not a regular file
+ERROR: Cannot attach log file '%s': %s
+ERROR: -inject requires a quoted text string
+ERROR: -inject requires a text string
+[POWBLOCK] Secure cookies selected
+[POWBLOCK] PROXY v1 protocol selected and mandatory
+[POWBLOCK] Will log all PoW solves
+[POWBLOCK] GPU Buster selected (Random %ims to %ims)
+[POWBLOCK] GPU Buster selected (legacy) - fast solve threshold: %d ms
+[POWBLOCK] License key is valid
+=== [POWBLOCK] WARNING: INVALID LICENSE KEY ===
+=== DEBUG MODE ENABLED ===
+[POWBLOCK] Loose mode selected - client base64 validation disabled and last IP octet ignored
+[POWBLOCK] Silent mode selected - no client errors will be sent (HTTP)
+[POWBLOCK] Loading challenge template from %s (%zu bytes)
+[POWBLOCK] Setup complete, initializing PoW challenge gate...
+Failed to open challenge page '%s': %s
+ERROR: Challenge page '%s' is either empty or too large (16kB max)
+Failed to allocate %ld bytes for template
+Short read on challenge page '%s'
+Failed to generate fallback HMAC secret
+====== POWBlock v1.8.11 'Jehuty' Started ======
+== (Copyright: Blue Rogues Development 2026) ==
+====== Need help?  Run with -h --h -help ======
 Port               : %d
 Difficulty         : %d bits
 Connection Timeout : %d seconds (CTime)
 Hash Algorithm     : SHA-%d
+Max Concurrent     : %d
+Rate Limit         : %d / %ds
+Submission Limit   : %d / %ds
+Max conns / client : %d
+Slowloris Detector : <= %d bytes, max %d
+Logging throttle   : %ds
 Challenge Page     : %s (%zu bytes)
-=== DEBUG MODE ENABLED ===
-=== LICENSE VALID ===
-=== INVALID LICENSE KEY ===
-=== LOOSE MODE ENABLED === Warning: Reduced security...
-=== SILENT MODE ENABLED ===
-=== GPU BUSTER ENABLED === Fast solve threshold: %d ms
-Loaded challenge template from %s (%zu bytes)
-Failed to open challenge page '%s': %s
-ERROR: Challenge page '%s' is either empty or too large (10kB max)
-Failed to allocate %ld bytes for template
-Short read on challenge page '%s'
-Failed to generate fallback HMAC secret
+Log file           : %s
+Client prints      : X-PoW-Print enabled
+Inject text        : %s
+DEBUG MODE ENABLED
+==================================
 
 DROP/Security Logs:
-[POWBLOCK] DROP RateLimit from %s
-[POWBLOCK] DROP SubmissionLimit from %s
-[POWBLOCK] DROP MaxIPConns from %s
-[POWBLOCK] DROP Trickling via %s
-[POWBLOCK] DROP LifetimeSweep via %s
-[POWBLOCK] DROP SlowlorisSweep via %s
-[POWBLOCK] DROP BadHMAC from %s
-[POWBLOCK] DROP WeakPOW %d vs %d bits from %s
-[POWBLOCK] DROP InsaneSubmission from %s
+[Proxy: %s][POWBLOCK] DROP RateLimit%s from %s
+[Proxy: %s][POWBLOCK] DROP SubmissionLimit%s from %s
+[Proxy: %s][POWBLOCK] DROP MaxIPConns%s from %s
+[Proxy: %s][POWBLOCK] DROP InsaneSubmission%s from %s
+[Proxy: %s][POWBLOCK] DROP MismatchIP token %s vs current %s%s%s from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] DROP AuthFailed%s from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] DROP BadHMAC%s from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] DROP WeakPow %d vs %d bits%s from %s
+Challenge/Nonce was %s%llu
+[Proxy: %s] [ID: %s] [POWBLOCK] DROP ChallengeExpired age %.1f sec (timeout %d)%s from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] DROP BogeyFastMover %lld ms vs %d%s from %s
 [POWBLOCK] DROP LifetimeOut via %s
 [POWBLOCK] DROP Slowloris via %s
-[POWBLOCK] DROP BogeyFastMover %ld ms vs %d from %s
-[POWBLOCK] DROP MismatchIP token %s vs current %s%s from %s
-[POWBLOCK] DROP ChallengeExpired age %.1f sec (timeout %d) from %s
-[POWBLOCK] DROP AuthFailed from %s
+[POWBLOCK] DROP LifetimeSweep via %s
+[POWBLOCK] DROP SlowlorisSweep via %s
+[POWBLOCK] Trickling attack via %s
 
 Other Operational Logs:
 [POWBLOCK] accept4 failed: %s
 [POWBLOCK] WARNING: Global concurrent client connections %d/%d! Are we under attack?
 [POWBLOCK] WARNING: Rate table high collision pressure from %s (probes=%d)
+[Proxy: %s] [ID: %s] [POWBLOCK] Client %s%s requesting '%s' SOLVED diff %d in %llums
 [POWBLOCK] Shutting down...
+[POWBLOCK] NOTICE: shutdown list not empty
+epoll_wait: (perror)
 
 Logs that require -debug:
 [POWBLOCK] rearm_for_read failed for %s (fd=%d): %s
 [POWBLOCK] rearm_for_write failed for %s (fd=%d): %s
+[POWBLOCK] Starting write for %s (len=%zu)
 [POWBLOCK] DEBUG: close_conn called on already closed %s
-[POWBLOCK] DEBUG: No powblock= found from %s
-[POWBLOCK] DEBUG: No pbchal= found from %s
-[POWBLOCK] DEBUG: base64 decoded len=%zu from %s
-[POWBLOCK] DEBUG: Bad payload length %zu from %s
-[POWBLOCK] DEBUG: Payload starts with: %.100s from %s
-[POWBLOCK] DEBUG: Payload parse failed (fields=%d) from %s
+[Proxy: %s][POWBLOCK] DEBUG: No powblock= found from %s
+[Proxy: %s][POWBLOCK] DEBUG: No pbchal= found from %s
+[Proxy: %s][POWBLOCK] DEBUG: base64 decoded len=%zu from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] DEBUG: Bad payload length %zu from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] DEBUG: Payload starts with: %.100s from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] Payload parse failed (fields=%d) from %s
+[Proxy: %s] [ID: %s] [POWBLOCK] Success! Found %d leading 0 bits for Challenge/Nonce %s%llu
 [POWBLOCK] DEBUG: Proxy IP: %s
 [POWBLOCK] DEBUG: Client request line: %.1000s...
 [POWBLOCK] DEBUG: Extracted pbchal token len=%zu from %s
-[POWBLOCK] DEBUG: No challenge template loaded - cannot serve challenge
 [POWBLOCK] DEBUG: build_success_response produced empty response for %s
-[POWBLOCK] DEBUG: Entropy failure in challenge from %s
+[POWBLOCK] [ID: %s] WARNING: build_success_response truncated/failed for %s (resp_len=%d)
+[POWBLOCK] No challenge template loaded - cannot serve challenge
+[POWBLOCK] Entropy failure in challenge from %s
+[POWBLOCK] Challenge body snprintf overflow
 [POWBLOCK] getrandom failed, using /dev/urandom fallback
 [POWBLOCK] All entropy sources failed for %zu bytes
 [POWBLOCK] CONNERROR: PROXY v1 parse failed from %s
-[POWBLOCK] DROP OversizedHeaders from %s
+[POWBLOCK] DROP OversizedHeaders via %s
 [POWBLOCK] Cleared %d stale IP rate-limit entries
-
-
-Dumps raw and normalized headers (comparison/parser/peer debugging)
+[POWBLOCK] Final Client IP: %s  (source: %s)
+=== RAW HEADERS ===
+=== END RAW HEADERS ===
+=== REMOTE PEER AND NORMALIZED HEADERS ===
+=== END NORMALIZED HEADERS ===
 
 
 ================================
@@ -849,7 +931,7 @@ These choices prioritize simplicity, predictability, and safety under attack ove
 =====================================
 POWBlock 1.8x Series - API Specification
 
-Version: 1.8.10J "Jehuty"
+Version: 1.8.11J "Jehuty"
 Type:   Header-driven Proof-of-Work Microservice
 Date:   October 2026
 
@@ -868,14 +950,18 @@ Endpoints
 ---------
 GET /          Main challenge endpoint (default route)
 GET /POWBlockStats     Statistics page (plain text)
+GET /POWBlockHealth    Health probe endpoint (HTTP 200 ok)
 
 Request Headers (sent by controlling proxy)
 --------------------------------------------
-(Universal)
+(Required)
 X-Client-IP           : Canonical client IP (required)
 X-PoW-Expected        : Expected POW_TOKEN value (required)
 X-Original-URL        : Original URL to redirect to after success (required)
 X-PoW-Secret          : Set primary HMAC key for this request
+
+(Optional)
+X-PoW-Print           : Adds up to 500 chars to DROP logs for client User-Agent, etc
 
 (Licensed Copy)
 X-PoW-ID              : Optional value for POW_ID cookie
@@ -919,4 +1005,4 @@ Security Requirements (Mandatory)
 - POWBlock must never be directly reachable from the public internet.
 - Use X-PoW-ClientAuth when exposing to remote proxies.
 ================================================================
-This specification is valid for POWBlock 1.8.10J "Jehuty" and newer.
+This specification is valid for POWBlock 1.8.11J "Jehuty" and newer.
