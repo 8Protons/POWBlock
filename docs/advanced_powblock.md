@@ -80,7 +80,7 @@ POWBlock does not require any configuration to do this - it is enabled by defaul
 
 POWBlock supports being ran behind a simple TLS proxy like Hitch or Haproxy, and when configured with certs this can secure traffic between the remote proxy and the powbox server via ordinary HTTPS (just set the HTTPS domain, instead of the IP address of the powbox, as your proxy backend and configure your proxy for TLS when using it, or use Stunnel if your proxy doesn't support backend TLS).  Remember that POWBlock *is a backend* and must be treated as such, with traffic being passed to it transparently.
 
-Beginning with v1.8.10, POWBlock supports the PROXY v1 protocol via the -proxyv1 startup arg.  Using this will allow accurate logging of the remote proxy's IP address when POWBlock is operating behind TLS.  Make sure that your TLS terminator supports it. An advanced Stunnel setup using TLS and PROXY can be found in the technical readme.
+Beginning with v1.8.10, POWBlock supports the PROXY v1 protocol via the -proxyv1 startup arg.  Using this will allow accurate logging of the remote proxy's IP address when POWBlock is operating behind TLS.  Make sure that your TLS terminator supports it. An advanced Stunnel setup using TLS and PROXY can be found in the technical readme.  Additionally, v1.8.11 adds several new client logging options and the -inject arg, allowing you to specify an instance ID for each POWBlock that gets carried over into several logs and debug logs.  The stats display is also enhanced for better compatibility with common server and cluster management tools, including the addition of JSON outputs.
 
 **Example minimalist Stunnel config:**
 
