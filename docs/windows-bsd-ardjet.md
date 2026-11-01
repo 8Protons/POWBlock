@@ -75,7 +75,7 @@ On Windows, pass an explicit `-cpage` path if Windows Defender complains about a
 Your service manager (Task Scheduler, rc, etc.) will likely require a shell invocation in the execution command to start the program. To bypass this, you can execute the binary once with the `--assimilate` flag:
 
 ```bash
-./powblock1810 --assimilate
+./powblock1811 --assimilate
 ```
 
 ⚠️ **Important Note:** This locks the binary specifically to your local OS and CPU type. It will **lose all portability benefits**, but it will run completely natively without needing shell workarounds. This may trip antivirus warnings on execution because the binary modifies its own code.
@@ -112,7 +112,7 @@ Your service manager (Task Scheduler, rc, etc.) will likely require a shell invo
 To capture useful logs on Windows, explicitly redirect `stderr` to a file. Here is an example execution string tailored for **Windows Task Scheduler**:
 
 ```cmd
-cmd.exe /c ""C:\Program Files\Powblock\powblock1810-WIN64.exe" -auth Fooauthkeybar123 -license 1234567 -debug > "C:\Program Files\Powblock\log.txt" 2>&1"
+cmd.exe /c ""C:\Program Files\Powblock\powblock1811-WIN64.exe" -auth Fooauthkeybar123 -license 1234567 -debug > "C:\Program Files\Powblock\log.txt" 2>&1"
 ```
 
 ***
