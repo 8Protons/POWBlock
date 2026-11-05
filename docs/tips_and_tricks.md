@@ -17,7 +17,16 @@
 - If you'd like a dedicated POWBlock logfile instead of logging to the system journal, you can add:
 
       StandardError=append:/path/to/log/dir/powblock.log
-  to the systemd template right below EXECSTART.
+  to the systemd template right below EXECSTART, or in v1.8.11+ use the -dump arg.
+- If you really need dynamic difficulty but can't buy a license, you can run an extra POWBlock on a different port with a different config and use it as an "easy mode" or "hard mode" backend in your routing logic.
+- If you want to use different cookie names or specs for the POW cookies you can intercept the set-cookie response and rewrite it with your proxy.
+- If you'd like to log the client URLs on failures and DROPs you can use X-PoW-Print.
+- You can use POWBlock to protect only specific parts of a website, but if the part has a non-HTML doctype you'll need to modify it to change the request type or open a popup, iframe, or page so POWBlock can run (one of the very few times you might need to change your origin)
+- If your audience has major issues with IPs changing, you can use their /24 in their hash and enable -loose mode to help them.
+- A good header fingerprint to use behind a CDN is User-Agent + Sec-Ch headers + ASN + Country Code. This limits how big an attacker's botnet can be, geographically.
+- You can do rate limiting in your proxy keyed off of POW cookie values instead of just IP.  Varnish vsthrottle allows this.
+- If you use JS browser fingerprinting in the cpage, make sure to look up what values modern browsers are spoofing. They hate fingerprints these days.
+- 99% of user complaints you'll get about POWBlock are from people who have insane privacy features turned on, whose IP address changes every 10 seconds, or who make ridiculous numbers of concurrent requests and look exactly like a bot. Its usually their fault, not a bug in your controller.
 
 - POWBlock intentionally separates the client's cookie values from anything going on inside its own process, and leaves them up to the proxy. This gives the admin the freedom to use *anything* as the token value, while leaving POWBlock free to cleanly sign, verify, IP bind and time limit challenges and submissions. Hash(clientIP+Secret) is just our recommended practice for the POW_TOKEN. You can use any kind of deterministic client value or hash you want as long as you keep X-PoW-Expected to <64 chars. Hack away.
 
