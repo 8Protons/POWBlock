@@ -28,6 +28,10 @@ You put it on your server, guard it with your firewall, and run it with the opti
 
 **F.A.Q:**
 
+**Q:**  *"What does POWBlock expect of me?":*
+
+A degree of expertise in configuring the stack that you're running. You need to have a decent understanding of how HTTP works, how cookies work, how requests work, how IP addresses and HTTP headers work, and how to reason through your own proxy or server config settings to implement what you want in your controller. Setting up POWBlock is quick and easy for an experienced admin (many basic controllers can be written and debugged from scratch in fifteen minutes), but what it is *not* is "drop-in trivial." Brainless ease-of-use is what you're trading to get the smallest size, best performance, and best DDoS defense in its class, and we do not pretend otherwise.
+
 **Q:**  *"What proxies/servers does this work best with?":*
 
 POWBlock is designed to run behind your existing reverse proxy as an alternate backend. Your proxy needs to be able to do just a few things to make use of it:  
