@@ -4,9 +4,9 @@ README
 
 Introduction:
 
-What is POWBlock:  POWBlock is a simple, high performance proof-of-work gateway that sits behind any reverse proxy. Written in about 2500 lines of pure C with EPOLL, and including a separate challenge page with HTML and inline javascript, it is a self-contained program that provides high-speed, high-volume proof-of-work defense as a microservice.  You point your proxy at it, it serves a tiny JavaScript challenge page that forces the client to burn CPU cycles mining a SHA-256 or SHA-512 hash with enough leading zeros, and if they succeed it hands back a cookie (POW_TOKEN) that lets them through to your main site and then redirects them where they wanted to go. No fancy UI, no bloated framework, no massive dependency list - just a single ~1MB binary with zero dependencies that runs on basically anything and scales linearly if you spin up multiple instances.  POWBlock is controlled by http headers injected by your proxy or server and does not require any integration with your website code to work - No embeds, no widgets, no Wordpress plugins needed.  
+What is POWBlock:  POWBlock is a simple, high performance proof-of-work gateway that sits behind any reverse proxy. Written in about 4000 lines of pure C with EPOLL, and including a separate challenge page with HTML and inline javascript, it is a self-contained program that provides high-speed, high-volume proof-of-work defense as a microservice.  You point your proxy at it, it serves a tiny JavaScript challenge page that forces the client to burn CPU cycles mining a SHA-256 or SHA-512 hash with enough leading zeros, and if they succeed it hands back a cookie (POW_TOKEN) that lets them through to your main site and then redirects them where they wanted to go. No fancy UI, no bloated framework, no massive dependency list - just a single ~1MB binary with zero dependencies that runs on basically anything and scales linearly if you spin up multiple instances.  POWBlock is controlled by http headers injected by your proxy or server and does not require any integration with your website code to work - No embeds, no widgets, no Wordpress plugins needed.  
 
-Why POWBlock exists: All existing PoW defense tools try to own your stack or else come with a ton of integration requirements, moving parts, and system bloat/overhead. POWBlock is 100% system agnostic.  It doesn't care what your backend is, what language your site uses, or whether your proxy is running Varnish, Nginx, Caddy, Traefik, Apache, or a homebrew server built with BASH, Netcat, and duct tape.  It doesn't care if its standing alone on your network edge or if you're using Cloudflare in front of it.  It doesn't care if you're running one instance on the local machine or 20 instances on a remote machine.  It doesn't care if its running on clearnet or TOR.  It doesn't even need to start as root.  It's built on the classic UNIX philosophy to do exactly one job, and do it well.  It does this while using absolutely minimal system resources and presenting an absolutely minimal attack surface, and is especially designed to operate under the control of your existing stack. It is proof-of-work defense *as a primitive* and is the first of its kind.
+Why POWBlock exists: All existing PoW defense tools try to own your stack or else come with a ton of integration requirements, moving parts, and system bloat/overhead. POWBlock is 100% system agnostic.  It doesn't care what your backend is, what language your site uses, or whether your proxy is running Varnish, Nginx, Caddy, Traefik, Apache, or a homebrew server built with BASH, Netcat, and duct tape.  It doesn't care if its standing alone on your network edge or if you're using Cloudflare in front of it.  It doesn't care if you're running one instance on the local machine or 20 instances on a remote machine.  It doesn't care if its running on clearnet or TOR.  It doesn't even need to start as root.  It's built on the classic UNIX philosophy to do exactly one job, and do it well.  It does this while using absolutely minimal system resources and presenting an absolutely minimal attack surface, and is especially designed to operate under the control of your existing stack. It is proof-of-work defense *as a primitive* and is the first of its kind.  And if you like the way some other POW tool works, you can use POWBlock together with your favorite proxy and build the same setup with more speed, less resource use, and better security in a platform that you're already familiar with.
 
 Why we made it:  The world of the present day is awash with scraper bots and small-time DDoS for hire goons all feeding off the "AI revolution" and proliferation of massive global networks of micro-bots based on compromised IoT devices.  Independent sites are being corralled onto huge platforms like Cloudflare to get even basic protections, and the very few self-hosted solutions out there are fat, clunky, domineering of your tech stack, incompatible or inefficient with many website setups, and often quite weak in spite of their complexity. We started with the notion of making a very strong PoW gate for use with Varnish Cache, but it turned out that in making it Varnish compatible it was already so close to being system agnostic that we decided to lean into the concept.
 
@@ -74,7 +74,7 @@ COMMERCIAL/SHAREWARE Line (2026)
 1.8.3T "Asuka" - ASAN/gdb testbed deployed against ongoing large (~250kRPS) DDoS attacks for data gathering and debugging
 1.8.4J - Fixed several small memory and return value issues revealed by DDoS load
 1.8.5J - Upgraded EPOLL accept loop for atomicity, removed old send_response wrapper, hardened write cycle, and normalized all function returns
-1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption
+1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption - FIRST PUBLIC RELEASE!
 1.8.7J - Fixed a small bug in the URL sanitizer and made the system limits tunable via startup args
 1.8.8J - Added moderate bugfixes to 1.8.7 after code review, plus arg-tunable log throttling, additional error prints, and capped cpage size to 10kB at startup
 1.8.9J - Added Retry button to client error messages, -secure arg for secure cookies, and refactored logging to show remote proxy IP
@@ -146,7 +146,9 @@ maxcli:  Maximum simultaneous connection per individual client
 
 tsize: The size in bytes below which client packets are considered "tiny"
 
-tmax:  The number of "tiny" packet reads we count before dropping the client as a Slowloris attack
+tmax:  The number of "tiny" packet reads we count before dropping the client as a Trickling attack
+
+log:  The minimum number of seconds between attack log prints to protect the CPU, 0-5 allowed, default is 2
 
 debug:  Enables very verbose debug logging to the console/syslog
 
@@ -171,7 +173,7 @@ solvelogs:  When set, POWBlock will log every successful solve - recording clien
 
 mslog:  A millisecond log throttle for -solvelogs, default 500
 
-inject:  Takes "a quoted text string" up to 120 chars, and injects it into the default cpage footer, client 400 errors, and some logs.  Escapes HTML automatically.
+inject:  Takes "a quoted text string" up to 128 chars, and injects it into the default cpage footer, client 400 errors, and some logs.  Escapes HTML automatically.
 (handy to record an instance ID when running multiple POWBlocks, or just to show a contact email to clients who might have trouble, or both)
 
 license:  Accepts a 16+ char POWBlock license key that enables the optional control headers
@@ -296,13 +298,13 @@ POWBlock has a stats readout in plaintext or JSON format that shows the followin
 - Current active connections right now
 - Total requests processed since startup
 - Client IP hash table in use (table can track around 500k IPs for the rate limiters and conn counts)
-- Failed challenges (insane/malformed answers, answers with leading 0 bits < difficulty, and speed limit rejections)
+- Failed challenges (answers with leading 0 bits < difficulty, and CTime/fast/randfast speed limit rejections)
 - Valid POW tokens issued
 - Average POW solve time across all users
 - Rate limit hits (global requests for 1 IP)
 - Submission limit hits (POW answers submitted for 1 IP)
 - Client fails for IP mismatches (answer came from different IP than challenge was sent to)
-- Client fails for invalid HMAC (client exceeded CTime or else the challenge was reused/forged/tampered)
+- Client fails for invalid HMAC (challenge was replayed/forged/tampered)
 - Slowloris drops (no client data submitted for 30+ seconds)
 - Timeout drops (client took longer than CTime to complete a connection - this is rare since Slowloris drops catch these first)
 - Trickle drops (too many tiny packets were sent by the client)
@@ -326,7 +328,7 @@ curl -H X-PoW-ClientAuth:fooauthkeybar123 localhost:9001/POWBlockStats
 or
 curl -H X-PoW-ClientAuth:fooauthkeybar123 localhost:9001/POWBlockStats?format=json
 
-The stats page takes an optional query string that serves its output in JSON format instead of plaintext.  Executing these commands on a machine that has multiple POWBlock instances running will poll one of them at random, but due to the kernel's own load balancing this will still give a good idea of what the average system stats look like. The grand total will be approximately [visible stats] multiplied times [POWBlock instances running].
+The stats page takes an optional query string that serves its output in JSON format instead of plaintext.  Executing these commands on a machine that has multiple POWBlock instances running will poll one of them at random, but due to the kernel's own load balancing this will still give a good idea of what the average system stats look like. The grand total will be approximately [visible stats] multiplied times [POWBlock instances running]. If the instances are on separate ports (powbox) you can poll them individually.
 
 Stat polling is scriptable, and can be turned into a live feed with the Linux "watch" command:
 
@@ -343,7 +345,7 @@ POWBlock blindly trusts the various X-* control headers because they are expecte
 
 POWBlock was designed foremost for simplicity and reliability. Single-threaded EPOLL architecture means no locks, no threads to manage, no process state shared, no memory shared, and no mutex-wakeup thrashing which is the Achilles heel of most other PoW systems like Anubis.  The bottlenecks are purely CPU and network I/O and these are predictable.  The kernel handles our processing and connection queues for us, and designing the engine around SO_REUSEADDR/SO_REUSEPORT made linear scaling trivial.  The overall operation cycle of [Accept-Process-Respond-Disconnect-Repeat] puts the onus on the client to complete the necessary connections, and thereby eliminates nearly all vulnerabilities related to keepalives, multiplexing, and smuggling.  Once the core of the program was established we squeezed as much speed and client capacity out of it as our skills would allow, often iterating under fire as our own websites were attacked.  POWBlock is so simple that it might be mistaken for a toy, but we remind the reader that few tools are more simple or more effective than a good quality sledgehammer.
 
-POWBlock has two simple built-in rate limiters that allow 100 global requests/client/120s, and 12 PoW submissions/client/300s.  These limits are fairly high to accommodate users on shared IP addresses and to permit browser prefetch activity, but an ideal client should only require 2 requests (challenge GET + 302) and 1 submission GET per token.  Since 1.8.7 these limits and others can be overridden with startup args.  Its other internal protections are thoughtful design that prevents common exhaustion vectors and memory/input overflows, good sanitization of data and client requests, a "safety first" fail-closed-on-client-error policy, an optional auth key to prevent unauthorized outside access, throttled logging to prevent CPU spin from log spamming, and a simple header/connection timeout/trickle tracker with a timed sweep that makes it resistant to Slowloris attacks.  For everything else it relies on the reverse proxy and server firewall.  It is critical that you isolate POWBlock from the open Internet, whether by IPTables or a simple firewall like UFW.  Clients must never be able to reach it directly, only via the reverse proxy.  Additionally using the proxy to rate limit clients both connecting to POWBlock (simple limit like 30requests/10 seconds to account for browser prefetching) and a much tighter limit on submissions (if url ~ ?powblock limit 2-4 per IP per minute) are solid security measures to prevent POWBlock from becoming a weak link in your website stack.
+POWBlock has two simple built-in rate limiters that allow 100 global requests/client/120s, and 12 PoW submissions/client/300s.  These limits are fairly high to accommodate users on shared IP addresses and to permit browser prefetch activity, but an ideal client should only require 2 requests (challenge GET + 302) and 1 submission GET per token.  Since 1.8.7 these limits and others can be overridden with startup args.  Its other internal protections are thoughtful design that prevents common exhaustion vectors and memory/input overflows, good sanitization of data and client requests, a "safety first" fail-closed-on-client-error policy, an optional auth key to prevent unauthorized outside access, throttled logging to prevent CPU spin from log spamming, and a simple header/connection timeout/trickle tracker with a timed sweep that makes it resistant to Slowloris attacks.  For everything else it relies on the reverse proxy and server firewall.  It is critical that you isolate POWBlock from the open Internet, whether by IPTables or a simple firewall like UFW.  Clients must never be able to reach it directly, only via the reverse proxy.  Additionally using the proxy to rate limit clients both connecting to POWBlock (simple limit like 30requests/10 seconds to account for browser prefetching) and a much tighter limit on submissions (if url ~ ?powblock limit 2-4 per IP per minute) are solid security measures to prevent POWBlock from becoming a weak link in your website stack - layered throttles are harder to smash through with fast burst attacks.
 
 Each single-threaded POWBlock can handle 8192+ concurrent simultaneous connections, and past benchmarks on version 1.8.1 showed that it can process 9000+ requests per second depending on your hardware, bandwidth, proxy capacity, and the types of requests coming in.  Submissions are the hot path as they invoke the URL checker/parser, the complex HMAC signature operator, and the encoding/decoding functions that use the most CPU.  Each POWBlock can process 2000+ valid submissions per second before pegging a typical CPU core at 100%.  A sanity checker tries to detect invalid submissions early and dumps hostile clients without invoking the hot path, while the variable solve times inherent to PoW client operations introduces a natural jitter that mitigates the thundering herd. While we haven't benchmarked the newer 1.8.x series releases in the same way, our production stack has used a single POWBlock in combination with Haproxy to tank DDoS attacks as large as 250,000 requests per second with a budget 4-core VPS.
 
@@ -499,7 +501,7 @@ If your website uses a number of frontends (for example, multiple reverse proxie
 -----------------------------
 Advanced POWBlock:  Scaling
 
-POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.  The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.  So a 4 core machine does best with 1-3 POWBlocks, leaving at least one core as a failover for other software in case of heavy attack load.  Up to [cores] POWBlock instances can be ran on a large, dedicated server, but more than 25 begins to see diminishing returns due to kernel overhead.  A 16 core, 128GB Enterprise server with 15 POWBlocks should comfortably handle 150,000+ requests per second from scores of thousands of IPs, and clustering such servers via round-robin is also fully supported.  
+POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.  The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.  So a 4 core machine does best with 1-3 POWBlocks, leaving at least one core as a failover for other software in case of heavy attack load.  Up to [cores] POWBlock instances can be ran on a large, dedicated server, but more than 25 begins to see diminishing returns due to kernel overhead.  A 16 core, 128GB Enterprise server with 15 POWBlocks should comfortably handle 150,000+ unfiltered requests per second from scores of thousands of IPs, and clustering such servers via round-robin is also fully supported.  These numbers are conservative, and depending on your exact use case you may be able to push them far higher.
 
 Example systemd template name:  powblock@.service
 
@@ -597,7 +599,7 @@ Tips, Tricks, Quirks, and Notes:
 - You can instantly invalidate all existing POW TOKENs and force mass re-challenge by changing your X-PoW-Secret key.
 - You can use the POW_ID cookie to hold and validate a TLS or device fingerprint to make replay attacks even harder.
 - You can also use POW_ID to hold an API or bypass key for certain clients that need to skip POWBlock.
-- The active_conns, rate_limit_hits, slowloris drops, and max_concurrent drops are the main stats to watch to detect probing and attacks.
+- The active_conns, ratelimit hits, slowloris drops, max_concurrent drops, and RPS stats are the main thing to watch to detect probing and attacks.
 - You can pick up the X-PoWBlock-Status response headers with your own server or proxy and use them to trigger things.
 - You can set up Javascript on your own site to run POWBlock in a background iframe so it doesn't interrupt users mid-browse if their token expires.
 - If running on TOR, have your clients set MaxCircuitDirtiness 3600 in their torrc file so they only get POW'd once per hour (TOR default = 10 mins).
@@ -609,9 +611,18 @@ Tips, Tricks, Quirks, and Notes:
 - If your site has very odd URL structures that mangle redirects from POWBlock, you can intercept the 302 and rewrite it with your proxy.
 - If you'd like a dedicated POWBlock logfile instead of logging to the system journal, you can add:
 StandardError=append:/path/to/log/dir/powblock.log
-to the systemd template right below EXECSTART.
+to the systemd template right below EXECSTART, or after v1.8.11 use the -dump arg.
+- If you really need dynamic difficulty but can't buy a license, you can run an extra POWBlock on a different port with a different config and use it as an "easy mode" or "hard mode" backend in your routing logic.
+- If you want to use different cookie names or specs for the POW cookies you can intercept the set-cookie response and rewrite it with your proxy.
+- If you'd like to log the client URLs on failures and DROPs you can use X-PoW-Print.
+- You can use POWBlock to protect only specific parts of a website, but if the part has a non-HTML doctype you'll need to modify it to change the request type or open a popup, iframe, or page so POWBlock can run (one of the very few times you might need to change your origin)
+- If your audience has major issues with IPs changing, you can use their /24 in their hash and enable -loose mode to help them.
+- A good header fingerprint to use behind a CDN is User-Agent + Sec-Ch headers + ASN + Country Code. This limits how big an attacker's botnet can be, geographically.
+- You can do rate limiting in your proxy keyed off of POW cookie values instead of just IP.  Varnish vsthrottle allows this.
+- If you use JS browser fingerprinting in the cpage, make sure to look up what values modern browsers are spoofing. They hate fingerprints these days.
+- 99% of user complaints you'll get about POWBlock are from people who have insane privacy features turned on, whose IP address changes every 10 seconds, or who make ridiculous numbers of concurrent requests and look exactly like a bot. Its usually their fault, not a bug in your controller.
 
--POWBlock intentionally separates the client's cookie values from anything going on inside its own process, and leaves them up to the proxy. This gives the admin the freedom to use *anything* as the token value, while leaving POWBlock free to cleanly IP bind and time limit challenges and submissions. Hash(clientIP+Secret) is just our recommended practice for the POW_TOKEN. You can use any kind of deterministic client value or hash you want as long as you keep X-PoW-Expected to <64 printable bytes. Hack away.
+-POWBlock intentionally separates the client's cookie values from anything going on inside its own process, and leaves them up to the proxy. This gives the admin the freedom to use *anything* as the token value, while leaving POWBlock free to cleanly sign, verify, IP bind and time limit challenges and submissions. Hash(clientIP+Secret) is just our recommended practice for the POW_TOKEN. You can use any kind of deterministic client value or hash you want as long as you keep X-PoW-Expected to <64 printable bytes. Hack away. You can exploit this to make your cookies as permissive or restrictive as you want, up to and including emulating the very light security of other POW tools like Anubis.
 
 -POWBlock doesn't have or need a configuration file like most programs do, because with a paid license the proxy can configure it on the fly.  Your proxy configuration becomes POWBlock's config file, and all the basic configs are handled via startup args in the free version.
 
@@ -722,7 +733,7 @@ Redirection logic invariants:
 
 POWBlock status headers:
 
-` When POWBlock responds with an HTTP 200 on first connection, it automatically sends a header "X-PoWBlock-Status: required".
+- When POWBlock responds with an HTTP 200 on first connection, it automatically sends a header "X-PoWBlock-Status: required".
 - This is an alert that can be picked up by app developers and others who may need a particular signal that POWBlock has been reached by the client.
 - Similarly when a client has completed POWBlock and the 302 redirect fires, POWBlock adds a header "X-PoWBlock-Status: completed" to signal passage.
 - The HTTP 200 also includes a "X-PB-License" header revealing the licensed or unlicensed status of the POWBlock instance.
@@ -747,6 +758,7 @@ Submission handling:
 - Nonce is parsed as unsigned long long via strtoull() - supports very large values (up to ~10^8).
 - Safe separator after nonce is allowed (?powblock=12345&# = nonce=12345) - intentional to tolerate sloppy clients or sites with unusual URL configs.
 - A sanity checker runs immediately after query parsing and rejects impossible nonces and impossible or non-base64 tokens, sparing the crypto operations.
+- HMAC runs first after sanity checking, rejecting forged tokens to spare the rest of the hot path - only real traffic gets fully processed.
 - Submissions are accepted preferentially from X-Original-URL and then from the request URL as a fallback - the rest of the client's buffer data is ignored.
 - If an otherwise valid submission somehow informs more than one nonce or challenge, the parser takes only the rightmost (most recent) of each and ignores the rest.
 
@@ -797,7 +809,7 @@ Performance & DoS resistance invariants:
 
 Logging invariants:
 
-- All logs use fprintf(stderr) and DROP logs are individually throttled to print no more than once every 2 seconds.
+- All logs use fprintf(stderr) and DROP logs are individually throttled to print no more than -log seconds.
 - Attack-relevant logs follow the pattern "[POWBLOCK] DROP ... from IP ..." to facilitate easy Fail2ban parsing.
 - Some DROP logs happen before headers are parsed, and use "DROP ... via IP..." to avoid tripping on your proxies.
 - Log entries and messages are the following list (some require -debug mode, and others may be present in Ardjet builds):
@@ -875,6 +887,7 @@ Challenge/Nonce was %s%llu
 [POWBLOCK] DROP LifetimeSweep via %s
 [POWBLOCK] DROP SlowlorisSweep via %s
 [POWBLOCK] Trickling attack via %s
+[POWBLOCK] DROP OversizedHeaders via %s
 
 Other Operational Logs:
 [POWBLOCK] accept4 failed: %s
@@ -908,7 +921,6 @@ Logs that require -debug:
 [POWBLOCK] getrandom failed, using /dev/urandom fallback
 [POWBLOCK] All entropy sources failed for %zu bytes
 [POWBLOCK] CONNERROR: PROXY v1 parse failed from %s
-[POWBLOCK] DROP OversizedHeaders via %s
 [POWBLOCK] Cleared %d stale IP rate-limit entries
 [POWBLOCK] Final Client IP: %s  (source: %s)
 === RAW HEADERS ===
