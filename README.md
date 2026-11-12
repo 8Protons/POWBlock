@@ -1,6 +1,10 @@
-*"Essentially POWBlock allows you to very cheaply add simple, powerful, and customizable proof-of-work defense to your existing server instead of adding another bloated proxy and all of its dependencies to your stack."* - Client description  
+<sub>*"Essentially POWBlock allows you to very cheaply add simple, powerful, and customizable proof-of-work defense to your existing server instead of adding another bloated proxy and all of its dependencies to your stack."* - Client description</sub>
 
-*"This looks like it should have been written in 1996. That's a compliment."* - Actual quote 🚀  
+<sub>*"This looks like it should have been written in 1996. That's a compliment."* - Actual quote 🚀</sub>
+
+<sub>*"it seems to work flawlessly so far, and the design is perfect for our edge set up."* - A site with >30 million monthly users</sub>
+
+=============
 
 ![Introduction](https://github.com/8Protons/POWBlock/blob/main/docs/powblocklogo.png)
  
