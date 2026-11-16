@@ -187,7 +187,7 @@ Missing flags will automatically revert to default settings. Flag order does not
 | `-swindow` | Submission rate-limit window in seconds. **Default: `300`** |
 | `-maxcli` | Max concurrent connections per client IP. **Default: `20`** |
 | `-tsize` | Tiny-read threshold in bytes. **Default: `17`** |
-| `-tmax` | Max consecutive tiny reads before drop. **Default: `60`** |
+| `-tmax` | Max count for tiny reads before drop. **Default: `60`** |
 | `-log` | Minimum delay in seconds (0-5) between attack log prints. **Default: `2`** |
 | `-debug` | Enables very verbose debug logging to the console/syslog. |
 | `-fast` | Rejects clients that solve faster than `[milliseconds]` and logs a DROP. **Default: off** |
