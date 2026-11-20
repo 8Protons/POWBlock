@@ -11,7 +11,7 @@ CONCEPT BRANCH (2024):
 1.2.1 - Experimental upgrades/refactors/UX, rand() POW challenge and developer QoL tweaks - FAIL
 1.2.2 - Bugfixes from 1.2.1, added POW_ID, rand() challenges, X-PoWBlock-Status headers, @service instance support - SUCCESS - Deployed to prod
 
-DATABASE VARIANT BRANCH (2025, defunct):
+DATABASE VARIANT BRANCH (2024, defunct):
 2.0 - Experimental variant fork testing flat database as token registry - SUCCESS
 2.1R - Experimental variant testing blocking Redis database - Partial Success
 2.1.1-2.1.4 - Experimental variants testing Asynchronous Redis database - FAIL (all)
@@ -23,14 +23,14 @@ STATELESS DEV BRANCH (2025):
 1.3H - Comprehensive bugfixes, hardening and improved DoS defense applied to 1.2.3 - SUCCESS - deployed to prod 
 1.4H - 1.3H adding improved IPV6 handling, client browser UX, internal fallback rate limiter, token self-destruct and pollable stats - SUCCESS
 1.5E - 1.4H core adding remote server auth keys and arg-adjustible challenge lifetimes - SUCCESS - First Enterprise candidate
-1.6E - 1.5E with significant refactoring of CPU and memory-expensive functions to further reduce resource - Partial Success
+1.6E - 1.5E with significant refactoring of CPU and memory-expensive functions to further reduce resource use - Partial Success
 1.6.1E - Bugfixes applied to 1.6E, added challenge page HTML as separate file for easy editing/customization - SUCCESS
 1.6.2E - 1.6.1E with added proxy-variable challenge expiry times and client connection lifetimes - SUCCESS - deployed to prod
 1.6.3E - 1.6.2E with added per-client connection limit and expanded stats polling - SUCCESS - deployed to prod
 1.6.4E - 1.6.3E with added header override for challenge expiry time (CTime) - SUCCESS - deployed to prod
 1.6.4ES - 1.6.4E with added HostDomain override support for multi-client cookie setting and optional SHA512 POW hash - SUCCESS
 
-STABLE/LTS LINE (2026)- (the software is considered complete and proven as of 1.7 - incremental upgrades follow):
+STABLE/LTS LINE (2025-26)- (the software is considered complete and proven as of 1.7 - incremental upgrades follow):
 1.7.0SE - Cleanup and minor refactor of 1.6.4ES adding better arg parsing and automatic challenge page adjustment
 1.7.1SE - Refactored logging to improve Fail2ban compatibility
 1.7.2SE - Minor bugfixes applied to 1.7.1SE, graceful close logic ported in from abandoned 2.xx line
@@ -49,7 +49,7 @@ STABLE/LTS LINE (2026)- (the software is considered complete and proven as of 1.
 1.7.15SE - Redesigned the client IP tracking tables to use modern probes and tombstones, added -loose arg for convenience
 1.7.16SE - Added -help menu, refactored parsing bounds and scan order, added experimental -fast block vs GPU solvers
 
-COMMERCIAL/SHAREWARE Line
+COMMERCIAL/SHAREWARE Line (2026)
 1.8.0J "Jehuty" - Eliminated OpenSSL dependency via portable SHA-256/512 libs, full refactor for static binary compile
 1.8.1J - Added -silent mode and -license key system, finished and debugged 1.8.0 refactor according to C code and EPOLL best practices
 1.8.2J - Performed edge-case security auditing and hardening, added X-PB-License status headers, developed Pipy Controller 1.0
@@ -57,9 +57,9 @@ COMMERCIAL/SHAREWARE Line
 1.8.3T "Asuka" - ASAN/gdb testbed deployed against ongoing large (~250kRPS) DDoS attacks for data gathering and debugging
 1.8.4J - Fixed several small memory and return value issues revealed by DDoS load
 1.8.5J - Upgraded EPOLL accept loop for atomicity, removed old send_response wrapper, hardened write cycle, and normalized all function returns
-1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption  
-1.8.7J - Added arg-tunable limiter settings, fixed a flaw in the URL sanitizer, refactored the base64 payload parser for additional memory safety
-1.8.8J - Fixed several small issues revealed by third-party code review, added adjustable log throttles, perror prints at startup, and hard-capped the cpage size to the recommended 10kB
+1.8.6J - Further hardened submission parsing logic to prevent attacks by req body corruption - FIRST PUBLIC RELEASE!
+1.8.7J - Fixed a small bug in the URL sanitizer and made the system limits tunable via startup args
+1.8.8J - Added moderate bugfixes to 1.8.7 after code review, plus arg-tunable log throttling, additional error prints, and capped cpage size to 10kB at startup
 1.8.9J - Added Retry button to client error messages, -secure arg for secure cookies, and refactored logging to show remote proxy IP
 1.8.10J - Added PROXYv1 support for remote POW+TLS, increased HTTP header buffer to 12kB, fixed minor UB in cpage load, and created "Ardjet" port for BSD/Windows
-1.8.11J - Added -dump logfile, -useprints (X-PoW-Print), -inject text, -randfast, -mslog throttle, -solvelogs logging, /POWBlockHealth check, and new traffic stats with optional json output
+1.8.11J - Added -randfast, -useprints, -mslog, -inject, -dump, and -solvelogs. Increased resp buffer to 24kB for larger cpages (now 16kB cpage max)
