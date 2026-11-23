@@ -19,7 +19,7 @@ Now let's do some comparisons based on a basic 2-core VPS with 4 GB of RAM and t
 * **Anubis:** ~3,200 requests per second
 
 #### Notes
-* HAProxy + POWBlock handles 20,000 to 30,000+ RPS, outperforming standalone Anubis (1,700 to 2,700 RPS) by roughly 15x to 25x on identical 2-core hardware.
+* HAProxy + POWBlock handles 17,000 to 20.000+ RPS, outperforming standalone Anubis (1,700 to 2,700 RPS) on identical 2-core hardware.
 * HAProxy validates tokens without leaving the proxy layer while POWBlock handles challenges, avoiding Anubis’s Go garbage collection and per-request CEL rule overhead.
 * HAProxy + POWBlock keeps proxy latency under 1–2 ms during traffic spikes, where Anubis incurs 5–15 ms overhead and degrades once CPU saturates past 2,500 RPS.
 
@@ -51,7 +51,7 @@ This one is an unsung champ. c0nw0nk released his first version clear back in 20
 * **Haproxy-Protection:** ~10,000 requests per second
 
 #### Notes
-* HAProxy + POWBlock handles 20,000 to 30,000+ RPS, outpacing HAProxy + haproxy-protection (3,500 to 9,000 RPS in SHA-256 mode, or 1,000 to 2,000 RPS with Argon2).
+* HAProxy + POWBlock handles 17,000 to 20.000+ RPS, outpacing HAProxy + haproxy-protection (3,500 to 9,000 RPS in SHA-256 mode, or 1,000 to 2,000 RPS with Argon2).
 * POWBlock checks returning users purely through HAProxy’s native hash converters, whereas haproxy-protection crosses the C-to-interpreted-Lua boundary on every request.
 * HAProxy + POWBlock is vastly superior for raw flood absorption on minimal hardware, while haproxy-protection trades away RPS for advanced WAF features.
 
