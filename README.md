@@ -20,7 +20,7 @@ The "Jehuty" series releases are compiled for AMD64 Linux systems, preferably De
 > [!TIP]
 > ### 🚀 Getting Started
 > Ready to deploy? [Download the latest release package](https://github.com/8Protons/POWBlock/releases) and:
-> **[Read the Quick Start Guide](https://github.com/8Protons/POWBlock/blob/main/docs/quickstart.md), [check out POWBlock tips and tricks](https://github.com/8Protons/POWBlock/blob/main/docs/tips_and_tricks.md), [read up on advanced concepts](https://github.com/8Protons/POWBlock/blob/main/docs/advanced_powblock.md) or [troubleshoot your POWBlock setup.](https://github.com/8Protons/POWBlock/blob/main/docs/troubleshooting.md)**
+> **[Read the Quick Start Guide](https://github.com/8Protons/POWBlock/blob/main/docs/quickstart.md), [check out POWBlock tips and tricks](https://github.com/8Protons/POWBlock/blob/main/docs/tips_and_tricks.md), [read up on advanced concepts](https://github.com/8Protons/POWBlock/blob/main/docs/advanced_powblock.md), [compare it against other tools](https://github.com/8Protons/POWBlock/blob/main/docs/comparisons.md) or [troubleshoot your POWBlock setup.](https://github.com/8Protons/POWBlock/blob/main/docs/troubleshooting.md)**
 
 
 **How it Works:**
