@@ -16,7 +16,7 @@ Now let's do some comparisons based on a basic 2-core VPS with 4 GB of RAM and t
 
 **Capacity @ 1000 concurrents:**
 * **POWBlock:** ~20,000 requests per second
-* **Anubis:** ~3,200 requests per second
+* **Anubis:** ~4,900 requests per second
 
 #### Notes
 * HAProxy + POWBlock handles 17,000 to 20.000+ RPS, outperforming standalone Anubis (1,700 to 2,700 RPS) on identical 2-core hardware.
@@ -24,7 +24,7 @@ Now let's do some comparisons based on a basic 2-core VPS with 4 GB of RAM and t
 * HAProxy + POWBlock keeps proxy latency under 1–2 ms during traffic spikes, where Anubis incurs 5–15 ms overhead and degrades once CPU saturates past 2,500 RPS.
 
 #### Comments
-This was a big comparison almost from the start, since Anubis started getting popular while POWBlock was still in early development. With no personal offense intended to its author, it didn't take much effort to look through Anubis's source code and implementations and recognize it as an amateurish kludge, or as the author himself stated, "a weekend hack" thrown together to protect a personal Git forge. Many of the hundreds of issues listed in its repository reflect patches and fixes that bandage over an inherently flawed and suboptimal design, or that plug obvious security holes that really shouldn't have existed in the first place. Credit where its due, Anubis did mostly "do the thing." But it was never designed to do-the-thing *well* and has suffered greatly for its lack of forethought in the throes of mass adoption.
+This was a big comparison almost from the start, since Anubis started getting popular while POWBlock was still in early development. With no personal offense intended to its author, it didn't take much effort to look through Anubis's source code and implementations and recognize it to be, as the author himself stated, "a weekend hack" thrown together to protect a personal Git forge. Many of the hundreds of issues listed in its repository reflect patches and fixes that bandage over an inherently flawed and suboptimal design, or that plug obvious security holes that really shouldn't have existed in the first place. Credit where its due, Anubis did mostly "do the thing" and a lot of people found it useful enough to garner wide adoption. But we contend it was never designed to do-the-thing *well* and that it has suffered greatly for its lack of forethought in the throes of mass adoption.  Anubis also has an Achilles' heel due to mutex-wakeup thrashing:  Benchmarks (yumechi, 2025) show it maxes out at ~12,000 submission RPS even on a 16core Ryzen enterprise server.  A single POWBlock matches that, and the same Ryzen machine can run up to 14 POWBlocks.
 
 ---
 
