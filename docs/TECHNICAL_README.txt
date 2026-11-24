@@ -347,7 +347,7 @@ POWBlock was designed foremost for simplicity and reliability. Single-threaded E
 
 POWBlock has two simple built-in rate limiters that allow 100 global requests/client/120s, and 12 PoW submissions/client/300s.  These limits are fairly high to accommodate users on shared IP addresses and to permit browser prefetch activity, but an ideal client should only require 2 requests (challenge GET + 302) and 1 submission GET per token.  Since 1.8.7 these limits and others can be overridden with startup args.  Its other internal protections are thoughtful design that prevents common exhaustion vectors and memory/input overflows, good sanitization of data and client requests, a "safety first" fail-closed-on-client-error policy, an optional auth key to prevent unauthorized outside access, throttled logging to prevent CPU spin from log spamming, and a simple header/connection timeout/trickle tracker with a timed sweep that makes it resistant to Slowloris attacks.  For everything else it relies on the reverse proxy and server firewall.  It is critical that you isolate POWBlock from the open Internet, whether by IPTables or a simple firewall like UFW.  Clients must never be able to reach it directly, only via the reverse proxy.  Additionally using the proxy to rate limit clients both connecting to POWBlock (simple limit like 30requests/10 seconds to account for browser prefetching) and a much tighter limit on submissions (if url ~ ?powblock limit 2-4 per IP per minute) are solid security measures to prevent POWBlock from becoming a weak link in your website stack - layered throttles are harder to smash through with fast burst attacks.
 
-Each single-threaded POWBlock can handle 8192+ concurrent simultaneous connections, and past benchmarks on version 1.8.1 showed that it can process 9000+ requests per second depending on your hardware, bandwidth, proxy capacity, and the types of requests coming in.  Submissions are the hot path as they invoke the URL checker/parser, the complex HMAC signature operator, and the encoding/decoding functions that use the most CPU.  Each POWBlock can process 2000+ valid submissions per second before pegging a typical CPU core at 100%.  A sanity checker tries to detect invalid submissions early and dumps hostile clients without invoking the hot path, while the variable solve times inherent to PoW client operations introduces a natural jitter that mitigates the thundering herd. While we haven't benchmarked the newer 1.8.x series releases in the same way, our production stack has used a single POWBlock in combination with Haproxy to tank DDoS attacks as large as 250,000 requests per second with a budget 4-core VPS.
+Each single-threaded POWBlock can handle 8192+ concurrent simultaneous connections, and newer benchmarks on version 1.8.11 showed that it can process ~13,000 requests per second using around 3-5% CPU.  Submissions used to be the hot path as they invoked the URL checker/parser, the complex HMAC signature operator, and the encoding/decoding functions that use the most CPU.  Since version 1.8.6 the submission path has been refactored and improved, and modern POWBlock can process 13,000+ valid submissions per second.  A sanity checker tries to detect invalid submissions early and dumps hostile clients without invoking the hot paths, while the variable solve times inherent to PoW client operations introduces a natural jitter that mitigates the thundering herd. With Haproxy out front doing pre-emptive traffic filtering, our production stack has used a single POWBlock to tank DDoS attacks as large as 250,000 requests per second with a budget 4-core VPS.  A typical controller with even basic filtering and rate limits can easily clear 20,000+.
 
 POWBlock offers little defense against huge, volumetric DDoS attacks that rely on sapping your bandwidth to zero (pipe flood) to take you down, or those that are powerful and sudden enough to crash your proxy with pure traffic overload before POWBlock can come into play.  Only a proper CDN that can distribute the attack load over many network links is capable of absorbing these, so POWBlock doesn't replace the Cloudflares and Basedflares of the world in that respect.  Smaller DDoS attacks (common request floods, LOIC barrages, small to medium botnets) get bottlenecked by a good POWBlock configuration.  Because all requests, regardless of URL or client IP, have to pass through the controller's challenge logic, if you put a rate limiter right before the backend handoff it becomes impossible for attackers to avoid it. You can also use the POW_TOKEN cookie as a powerful trust signal, and shed unauthenticated clients at the edge when your stack is under severe attack.
 
@@ -501,7 +501,7 @@ If your website uses a number of frontends (for example, multiple reverse proxie
 -----------------------------
 Advanced POWBlock:  Scaling
 
-POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.  The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.  So a 4 core machine does best with 1-3 POWBlocks, leaving at least one core as a failover for other software in case of heavy attack load.  Up to [cores] POWBlock instances can be ran on a large, dedicated server, but more than 25 begins to see diminishing returns due to kernel overhead.  A 16 core, 128GB Enterprise server with 15 POWBlocks should comfortably handle 150,000+ unfiltered requests per second from scores of thousands of IPs, and clustering such servers via round-robin is also fully supported.  These numbers are conservative, and depending on your exact use case you may be able to push them far higher.
+POWBlock is designed to scale linearly via systemd, using the @.service template.  By creating an @.service file in /etc/systemd/system (Debian) or its equivalent you can then activate and run multiple simultaneous instances of POWBlock on the same machine ("sudo systemctl start powblock@1 powblock@2" etc), using the same port and same config.  The Linux kernel will automatically distribute client load across these multiple instances in a round-robin manner.  It is recommended to not run more than [server number of CPU cores] minus one.  So a 4 core machine does best with 1-3 POWBlocks, leaving at least one core as a failover for other software in case of heavy attack load.  Up to [cores-2] POWBlock instances can be ran on a large, dedicated server, but more than 25 begins to see diminishing returns due to kernel overhead.  A 16 core, 128GB Enterprise server with 14 POWBlocks should comfortably handle 150,000+ unfiltered requests per second from scores of thousands of IPs, and clustering such servers via round-robin is also fully supported.  These numbers are conservative, and depending on your exact use case you may be able to push them far higher.
 
 Example systemd template name:  powblock@.service
 
@@ -1018,3 +1018,145 @@ Security Requirements (Mandatory)
 - Use X-PoW-ClientAuth when exposing to remote proxies.
 ================================================================
 This specification is valid for POWBlock 1.8.11J "Jehuty" and newer.
+
+
+-----------------------------
+Comparisons With Other Systems
+
+A popular question since release has been, "how does POWBlock compare with similar PoW systems?"  This is a deceptively hard question to answer, and the reason is because POWBlock is a *primitive.*  It does have competitors in the "protect your website from hostile clients using proof-of-work" arena, but the implementations are rather difficult to put side by side because you and your proxy and your custom controller are half of the equation.  To make a reasonable comparison, let's imagine a solid, middle-of-the-road POWBlock setup that would work on defaults for a high percentage of possible use cases.
+
+We'll pair POWBlock with Haproxy, because Haproxy handles TLS natively, is very small, available in every repo on nearly every Linux distro, extremely good quality, and its default config file supports ACL-based logic that provides everything needed for an intermediate-grade POWBlock controller right out of the box.  Let's assume we set up our haproxy.cfg with the basic security features:  TLS certs, a client whitelist, a client blacklist, a rate limiter on POW challenges, a second rate limiter on client traffic to the origin, a basic tar-pit, a global rate-limit circuit-breaker, and a mid-tier POWBlock controller that hashes (client.ip/24+UserAgent+UnixEpoch+"X-PoW-Secret"), and we'll say the epoch is a 12 hour window.
+
+We'll pair this with a POWBlock running on Difficulty 17 with a CTime of 90 seconds and a randfast option set at 1500-2200, and we'll enable basic logging options.  This is a very sane, rather client-friendly and welcoming setup that requires nothing unusual (not even a POWBlock license), and the controller could be built and debugged in a half hour or so.  We'll stick this setup in a Docker container so you can drop it down in front of your website.  If POWBlock had a "default build" it would likely look very similar to this.
+
+Now let's do some comparisons based on a basic 2-core VPS with 4 GB of RAM and the competitor systems running on common default settings.  Numbers are sourced from benchmark data found via Google, formal where available and informal where not, and we assume mixed traffic with ~70% already authenticated, 30% fresh PoW load.  Notes are generated by feeding the collected data to Gemini and asking for single-sentence summaries. Where summaries differ from posted stats, its because the posted stat was the highest benchmark number we could find, whereas Gemini calculated its own estimates.  Comments are our own thoughts.
+
+==========================
+POWBlock (Haproxy + POWBlock daemon + mid-tier controller)
+==========================
+
+
+==========================
+vs. Anubis (GO http proxy + PoW policy engine)
+==========================
+
+Capacity @ 1000 concurrents:
+----------------------------
+POWBlock:  ~20,000 requests per second
+Anubis:  ~4,900 requests per second
+
+Notes:
+- HAProxy + POWBlock handles 17,000 to 20,000+ RPS, outperforming standalone Anubis (1,700 to 3,200 RPS) on identical 2-core hardware.
+- HAProxy validates tokens without leaving the proxy layer while POWBlock handles challenges, avoiding Anubis’s Go garbage collection and per-request CEL rule overhead.
+- HAProxy + POWBlock keeps proxy latency under 1–2 ms during traffic spikes, where Anubis incurs 5–15 ms overhead and degrades once CPU saturates past 2,500 RPS.
+
+Comments:
+This was a big comparison almost from the start, since Anubis started getting popular while POWBlock was still in early development. With no personal offense intended to its author, it didn't take much effort to look through Anubis's source code and implementations and recognize it to be, as the author himself stated, "a weekend hack" thrown together to protect a personal Git forge.  Many of the hundreds of issues listed in its repository reflect patches and fixes that bandage over an inherently flawed and suboptimal design, or that plug obvious security holes that really shouldn't have existed in the first place. Credit where its due, Anubis did mostly "do the thing" and a lot of people found it useful enough to garner wide adoption.  But it was never designed to do-the-thing *well* and has suffered greatly for its lack of forethought in the throes of mass adoption.  Anubis also has an Achilles' heel due to mutex-wakeup thrashing:  Benchmarks (yumechi, 2025) show it maxes out at ~12,000 submission RPS even on a 16core Ryzen enterprise server.  A single POWBlock matches that, and the same Ryzen machine can run up to 14 POWBlocks.
+
+
+==========================
+vs. c0nw0nk's Anti-DDoS Script (OpenResty proxy + Lua WAF and challenge engine)
+==========================
+
+Capacity @ 1000 concurrents:
+----------------------------
+POWBlock:  ~20,000 requests per second
+c0nw0nk:  ~13,000 requests per second
+
+Notes:
+- OpenResty uses LuaJIT, giving it faster execution time and so better throughput than HAProxy Lua, which is PUC-Rio Lua 5.4 (interpreted bytecode, not JIT-compiled).
+- Even though OpenResty’s LuaJIT compiles to native code, it still runs scripting logic and HTML generation per request compared to HAProxy’s zero-copy fast path.
+- C0nw0nk trades raw flood capacity for the convenience of a single-process web server, whereas POWBlock maximizes survival against large Layer 7 attacks.
+
+Comments:
+This one is an unsung champ.  c0nw0nk released his first version clear back in 2019, as a self-hosted alternative to Cloudflare's "under attack mode."  As far as we're aware, this was the first big step in self-hosted bot and DDoS defense on the Internet.  He's developed it much further in the years since, and its an impressive piece of scripting technology.  We wish we were that good at Lua.  Unfortunately the thing is also an absolute beast.  A mighty monolith of a Lua package containing hundreds of settings and years of accumulated scope creep across page after page of dense code.  Its huge, heavy, brittle, only works with Nginx+Lua, and is very easy to misconfigure and break.  In short - a pain in the rear.
+
+
+==========================
+vs. Haproxy-Protection (Haproxy + Lua WAF and PoW engine + optional CAPTCHA)
+==========================
+
+Capacity @ 1000 concurrents:
+----------------------------
+POWBlock:  ~20,000 requests per second
+Haproxy-Protection:  ~10,000 requests per second
+
+Notes:
+- HAProxy + POWBlock handles 17,000 to 20,000+ RPS, outpacing HAProxy + haproxy-protection (3,500 to 9,000 RPS in SHA-256 mode, or 1,000 to 2,000 RPS with Argon2).
+- POWBlock checks returning users purely through HAProxy’s native hash converters, whereas haproxy-protection crosses the C-to-interpreted-Lua boundary on every request.
+- HAProxy + POWBlock is vastly superior for raw flood absorption on minimal hardware, while haproxy-protection trades away RPS for advanced WAF features.
+
+Comments:
+Haproxy-Protection (HPP) is like c0nw0nk's sexier younger sister.  It came out in late 2021 or thereabouts and we actually used it on a production site for a year before we started on POWBlock.  Its an all-in-one WAF system that tightly integrates with Haproxy, and uses a custom Lua-based engine to do PoW challenges, bot screening, captchas, and all sorts of fancy stuff including a professional web-panel with whole-network server controls and metrics.  Its an enterprise tool, and it works so well that its author used it as the basis for Basedflare.com - a startup Cloudflare competitor that runs HPP across an entire CDN.  It has drawbacks for a normal self-hosting case however.  Its deeply integrated with Haproxy's guts and is sensitive to version changes, meaning it almost has to be installed in a custom-compiled build specific to it, and rebuilt every time there's an update anywhere.  It also really wants to be its own monolithic edge *stack*, working in concert with Node.js based web controls and Varnish HTTP caches.  Protecting a single website with it is massively overkill, and also a pain in the rear.
+
+
+==========================
+vs. go-away (Go reverse proxy + PoW challenge engine)
+==========================
+
+Capacity @ 1000 concurrents:
+----------------------------
+POWBlock:  ~20,000 requests per second
+go-away:   ~7,000 requests per second
+
+Notes:
+- go-away is a clean, relatively lightweight Go reverse proxy focused on proof-of-work challenges and basic bot filtering.
+- It avoids some of Anubis’s heavier policy machinery but still pays the normal Go runtime and reverse-proxy overhead.
+- Token validation and challenge handling both live inside the Go process, so it cannot match HAProxy’s native fast path + external C verifier model.
+
+Comments:
+Go-away is like "diet Anubis done right."  Structurally its a well designed program that sticks to the basics, and provides a very fair set of options for protecting a site from small scrapers and low-end threats.  Its design is thoughtful and permissive to the stack, its not too hard to adjust and configure to suit any particular website, and is probably the closest conceptually to our POWBlock setup here.  But its still written in Golang which has significant limitations in terms of processing speed and client capacity when doing this specific task, and this is compounded by the fact that, as a forward guard, it has to handle the entire brunt of the mixed traffic by itself.  GO is a fine general purpose language, but guarding a stack against a mass scraper flood is *not* a "general purpose" job.
+
+
+==========================
+vs. Friendly Captcha / ALTCHA-style PoW widgets (embedded JS + server verification)
+==========================
+
+Capacity @ 1000 concurrents:
+----------------------------
+POWBlock:  ~20,000 requests per second
+Widget-style PoW:  effectively limited by origin / application server
+
+Notes:
+- These systems are not proxies. They are front-end widgets that run a proof-of-work puzzle in the browser and then submit a token to your backend for verification.
+- Protection only exists where you explicitly integrate the widget (forms, login, specific endpoints).
+- Server-side verification is usually cheap, but the overall architecture cannot protect the edge the way a proxy-level gate can.
+
+Comments:
+Friendly Captcha, ALTCHA, and similar tools are solving a different problem. They're perfectly fine for stopping automated form spam when you control the origin, but they are no substitute for an edge PoW gate. Comparing them directly to POWBlock is a mismatch - one protects specific interactions, the other can protect an entire site or network including the same post forms and APIs.
+
+
+===
+Conclusions
+===
+
+POWBlock coming out ahead isn't an act of hubris on our part, but rather a direct consequence of its design concept:  It's a standalone backend, an engine, and a building block.  In the competitor systems, the proof-of-work engine is *part* of the proxy.  It runs in the same process space, shares the same memory and thread pool, takes CPU cycles from the proxy's traffic loops to do the PoW generation and validation work, and forces the proxy into "context thrashing" as it has to oscillate between waving through authenticated clients and challenging everybody else.  The effort that this requires is greater than the sum of its parts, and that has the effect of dragging down global performance when load starts getting high.  It also has the drawback of *killing the proxy* if the PoW system falls over under an attack, which takes your website offline.
+
+POWBlock on the other hand, does all the hard PoW work on its own.  In our setup here, Haproxy only has to make a hash and string-match a cookie once per request.  That's the total extent of how much work it has to do on the PoW path, and that work is easy and cheap.  Invalid clients get passed to the POWBlock daemon, which handles creating, serving, validating, and tokenizing the PoW all by itself, and where its specialized design makes those operations easy and cheap.  The only context switching is done in the kernel, when Haproxy calls POWBlock by connecting the port.  The efficiency savings that POWBlock's concept buys causes an exponential increase in relative performance as load gets higher, because its functions are *cheaper* than the sum of their parts.  And if POWBlock gets hit so hard that the daemon falls over, *Haproxy is unaffected*, and clients with POW tokens can still access your site.
+
+The last thing worth pointing out in these comparisons is to reiterate that POWBlock is a *primitive*.  With a little creativity and the right controller, it can do almost anything these systems - or any hypothetical competitor - can do. You can write a Haproxy controller that 1:1 clones Anubis’s default behavior while delivering substantially better performance, isolation, and security.  The same applies to the others.  It is a building block called “POW”, and it stacks with things.
+
+
+-----------------------------
+Benchmark Data and Methodology
+
+We occasionally conduct internal benchmarks using a simple setup.  Mostly what we're looking for is global throughput (requests per second) and CPU use under load.  CPU is the primary bottleneck for POWBlock, with other potential bottlenecks belonging mostly to the kernel (syscalls like EPOLL, logging speed, etc).
+
+The machine:
+KVM slice - 2 VCPU @ 0.0st, 4GB of RAM, Debian 11, no other software (typical clean VPS), usually sourced from BuyVM specifically for these tests.
+Target:  One(1) POWBlock instance running on all defaults, pinned to CPU no 2.
+
+The scripts:
+CLI 'curl' script running 100 concurrent loops, spoofed X-Client-IP headers (bypasses rate limits).
+Goal:  10,000 challenge requests, 10,000 invalid (random junk) submissions.
+First pass, sanity checking.
+
+Python script running 400 concurrents, spoofed X-Client-IP headers, mixed modes (all challenges, all submissions, 70/30 mix).
+Goal:  50,000 challenge requests, 50,000 valid submissions (pre-farmed via native solver and known X-PoW-Secret), 50,000 mixed.
+Test must run to completion with zero errors anywhere, and on the first try.  Cheating (adjusting away from defaults) isn't allowed.
+Second pass, the real benchmark.  CPU use is monitored while the script hammers the daemon as hard as it can, and values are recorded for each mode, with processed requests divided by execution time for the RPS value, then the averages taken and rounded down.  
+
+Notes:
+This is not a laboratory clinical benchmark.  Its a bit simple, a bit messy, and not extremely precise.  However it gives us a very confident floor from where we can safely make claims about POWBlock's performance on the basis of "we know with 100% certainty it can do at least this much, because we've seen it with our own eyes."  In terms of technical reality, it can *probably* be pushed a lot higher (13,000 RPS at 5% CPU makes you wonder what it does at 99% if we could hit it that hard) but we don't want to make the claims and then be proven wrong by a lab.  Like POWBlock itself, we keep it conservative.  These benchmarks have been ran on versions 1.2.2, 1.5E, 1.6.1, 1.8.1, and 1.8.11, with the results informing our claims in the TECHNICAL_README.
+
+-----------------------------
