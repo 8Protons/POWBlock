@@ -139,3 +139,8 @@ and we'll check it out and send your license key right to your Email.
 | **Bitcoin** | `1P1k9QcTMJ2qC4rNzy27v6J93vpWQYWHuK` |
 | **Ethereum** | `0x87f7Be68863d95BA62d6408DE95506714d3Df5b0` |
 | **Monero** |  `48oy9aA1Uv6em1sSA3yyCE4PN9knPSY3pj4SzkMgqQVcY6zDPwLQmng2K8GQGNKeQJC3nsKesK2RSZKQjeE6DgbMRDKDTzz` |
+
+
+**Q:**  *"Isn't a pseudo-anonymous, closed source security tool paid in crypto a bit suspicious?"*
+
+We suppose.  But we hail from a different era of the Internet where such things were once common - just shipped on floppies and paid by cash in the mail.  POWBlock was originally created as a very strong, private defense tool for ourselves and a few close friends and allied websites.  We were under no obligation to release it at all, but we decided that putting it out there as "Ethical Shareware" with a cheap license paid in crypto might be a fun side-hustle that spared us from having to make a big website and set up card payments.  Regardless of the license terms, our *informal* policy is to support its users to the best of our ability.  And indeed, most of the new features added since the release of v1.8.6 have been direct results of users emailing us through Github.  While we do count some *very* large websites using it as a testament to its quality (talking to you music and manga fans out there), we definitely look forward to the day someone takes enough scientific interest to do a public security review and laboratory benchmark on it.  We're quite proud of what we've made.
